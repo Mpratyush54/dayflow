@@ -8,7 +8,7 @@ import { useAuth } from '../../hooks/useAuth';
 const DEMO_PASSWORD = 'Dayflow!2026';
 
 const DEMO_ACCOUNTS = [
-  { role: 'Employee', email: 'aarav@dayflow.dev', hint: 'Dashboard, attendance, leaves' },
+  { role: 'Demo employee', email: 'demo@dayflow.dev', hint: 'Clean slate — apply leave, check in, explore' },
   { role: 'HR', email: 'meera@dayflow.dev', hint: 'Approvals, payroll, team views' },
   { role: 'Admin', email: 'admin@dayflow.dev', hint: 'Full admin access' },
 ] as const;

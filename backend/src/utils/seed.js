@@ -11,6 +11,9 @@ import { buildPayrollStructure } from './salaryCalc.js';
 /** Password for every seeded account (meets signup security rules). */
 export const DEMO_PASSWORD = 'Dayflow!2026';
 
+/** Primary demo employee — always upserted, never given blocking seed leaves. */
+export const DEMO_USER_EMAIL = 'demo@dayflow.dev';
+
 const DEFAULT_COMPONENTS = [
   { key: 'basic', mode: 'percent_of_wage', value: 50 },
   { key: 'hra', mode: 'percent_of_basic', value: 50 },
@@ -18,6 +21,31 @@ const DEFAULT_COMPONENTS = [
 ];
 
 const SEED_USERS = [
+  {
+    employeeId: 'DF-DEMO1',
+    email: DEMO_USER_EMAIL,
+    name: 'Riya Demo',
+    role: 'EMPLOYEE',
+    phone: '+91 98765 00001',
+    address: 'Demo Tower, Bengaluru',
+    dateOfBirth: '1995-06-15',
+    nationality: 'Indian',
+    gender: 'FEMALE',
+    maritalStatus: 'SINGLE',
+    personalEmail: 'riya.demo@gmail.com',
+    bankAccountNo: '123456789012',
+    bankName: 'ICICI Bank',
+    ifsc: 'ICIC0001234',
+    pan: 'DEMO1234A',
+    designation: 'Demo Employee',
+    department: 'Engineering',
+    employmentType: 'FULL_TIME',
+    dateOfJoining: '2024-06-01',
+    workLocation: 'Bengaluru',
+    status: 'ACTIVE',
+    monthlyWage: 60000,
+    demoAccount: true,
+  },
   {
     employeeId: 'DF-1001',
     email: 'aarav@dayflow.dev',
@@ -237,7 +265,7 @@ export async function seedUsers() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
   const users = [];
   for (const data of SEED_USERS) {
-    const { monthlyWage, ...profile } = data;
+    const { monthlyWage, demoAccount: _demo, ...profile } = data;
     const payroll = payrollFromWage(monthlyWage ?? 50000);
     const user = await User.findOneAndUpdate(
       { employeeId: profile.employeeId },
@@ -259,11 +287,15 @@ export async function seedUsers() {
 export async function seedDemoData(users) {
   const byEmail = Object.fromEntries(users.map((u) => [u.email, u]));
   const hr = byEmail['meera@dayflow.dev'];
+  const demoUser = byEmail[DEMO_USER_EMAIL];
   const ids = users.map((u) => u._id);
+  const leaveDeleteIds = demoUser
+    ? ids.filter((id) => id.toString() !== demoUser._id.toString())
+    : ids;
 
   await Promise.all([
     Attendance.deleteMany({ user: { $in: ids } }),
-    LeaveRequest.deleteMany({ userId: { $in: ids } }),
+    LeaveRequest.deleteMany({ userId: { $in: leaveDeleteIds } }),
     Payroll.deleteMany({ userId: { $in: ids } }),
   ]);
 
@@ -291,6 +323,7 @@ export async function seedDemoData(users) {
   const attendanceRows = [];
 
   const employeePatterns = {
+    [DEMO_USER_EMAIL]: { presence: 0.93, halfDayRate: 0.03 },
     'aarav@dayflow.dev': { presence: 0.92, halfDayRate: 0.04 },
     'priya@dayflow.dev': { presence: 0.95, halfDayRate: 0.02 },
     'rahul@dayflow.dev': { presence: 0.88, halfDayRate: 0.08 },
@@ -316,7 +349,9 @@ export async function seedDemoData(users) {
       let checkOut = null;
       let status = halfDay ? 'HALF_DAY' : 'PRESENT';
 
-      if (key === todayKey && user.email === 'aarav@dayflow.dev') {
+      if (key === todayKey && user.email === DEMO_USER_EMAIL) {
+        checkOut = null;
+      } else if (key === todayKey && user.email === 'aarav@dayflow.dev') {
         checkOut = null;
       } else if (key === todayKey && user.email === 'vikram@dayflow.dev') {
         continue;
@@ -347,14 +382,14 @@ export async function seedDemoData(users) {
   const leaveRows = [];
 
   if (sneha) {
-    const leaveStart = addDays(today, -1);
-    const leaveEnd = addDays(today, 1);
+    const leaveStart = addDays(today, -12);
+    const leaveEnd = addDays(today, -10);
     leaveRows.push({
       userId: sneha._id,
       type: 'PAID',
       startDate: utcDate(leaveStart.getFullYear(), leaveStart.getMonth() + 1, leaveStart.getDate()),
       endDate: utcDate(leaveEnd.getFullYear(), leaveEnd.getMonth() + 1, leaveEnd.getDate()),
-      remarks: 'Family event — demo approved leave',
+      remarks: 'Family event — demo approved leave (past)',
       status: 'APPROVED',
       reviewerId: hr?._id,
       reviewerComment: 'Approved. Enjoy!',
@@ -377,9 +412,9 @@ export async function seedDemoData(users) {
   }
 
   if (priya) {
-    const futureStart = addDays(today, 7);
+    const futureStart = addDays(today, 14);
     while (isWeekend(futureStart)) futureStart.setDate(futureStart.getDate() + 1);
-    const futureEnd = addDays(futureStart, 2);
+    const futureEnd = addDays(futureStart, 1);
     leaveRows.push({
       userId: priya._id,
       type: 'PAID',
@@ -391,7 +426,7 @@ export async function seedDemoData(users) {
   }
 
   if (rahul) {
-    const pendingStart = addDays(today, 3);
+    const pendingStart = addDays(today, 21);
     while (isWeekend(pendingStart)) pendingStart.setDate(pendingStart.getDate() + 1);
     leaveRows.push({
       userId: rahul._id,

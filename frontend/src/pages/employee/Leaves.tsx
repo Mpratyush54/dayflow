@@ -13,6 +13,7 @@ import { useDelayedReady } from '../../hooks/useDelayedReady';
 import { applyLeave, getMyLeaves } from '../../api/leaves';
 import type { ApplyLeaveInput } from '../../api/leaves';
 import type { LeaveRequest, LeaveStatus, LeaveType } from '../../types';
+import { daysInclusiveKeys, rangesOverlap, toDateKey } from '../../utils/leaveDates';
 import './Leaves.css';
 
 const BALANCE_TOTALS: { type: LeaveType; total: number; tone: string }[] = [
@@ -67,11 +68,13 @@ function parseYear(raw: string | null) {
 
 function eachDayInRange(start: string, end: string) {
   const days: string[] = [];
-  const cur = new Date(`${start}T00:00:00`);
-  const endD = new Date(`${end}T00:00:00`);
+  const startKey = toDateKey(start);
+  const endKey = toDateKey(end);
+  const cur = new Date(`${startKey}T00:00:00.000Z`);
+  const endD = new Date(`${endKey}T00:00:00.000Z`);
   while (cur <= endD) {
-    days.push(dateKey(cur.getFullYear(), cur.getMonth(), cur.getDate()));
-    cur.setDate(cur.getDate() + 1);
+    days.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
   }
   return days;
 }
@@ -205,7 +208,23 @@ export default function Leaves() {
       setFormError('End date cannot be before the start date');
       return;
     }
-    const days = daysInclusive(form.startDate, form.endDate);
+    const conflict = (leaves ?? []).find(
+      (l) =>
+        (l.status === 'PENDING' || l.status === 'APPROVED') &&
+        rangesOverlap(
+          toDateKey(l.startDate),
+          toDateKey(l.endDate),
+          form.startDate,
+          form.endDate,
+        ),
+    );
+    if (conflict) {
+      setFormError(
+        `Overlaps your ${conflict.status.toLowerCase()} ${conflict.type} leave (${toDateKey(conflict.startDate)} – ${toDateKey(conflict.endDate)}). Pick different dates or wait for HR to review the existing request.`,
+      );
+      return;
+    }
+    const days = daysInclusiveKeys(form.startDate, form.endDate);
     const entitlement = BALANCE_TOTALS.find((b) => b.type === form.type)?.total;
     if (entitlement !== undefined) {
       const usedForType = usedByType.find((u) => u.type === form.type)?.used ?? 0;

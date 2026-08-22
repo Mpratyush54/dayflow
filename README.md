@@ -173,11 +173,11 @@ This creates **9 demo accounts** (7 employees + HR + admin) with ~5 weeks of att
 
 | Role | Email | Password |
 |------|-------|----------|
-| Employee | `aarav@dayflow.dev` | `Dayflow!2026` |
+| **Demo employee** | `demo@dayflow.dev` | `Dayflow!2026` |
 | HR | `meera@dayflow.dev` | `Dayflow!2026` |
 | Admin | `admin@dayflow.dev` | `Dayflow!2026` |
 
-Other employees: `priya@`, `rahul@`, `sneha@`, `vikram@`, `ananya@`, `karan@` @ `dayflow.dev` (same password). The sign-in page has one-click demo account buttons.
+Use **`demo@dayflow.dev`** to apply leave — no seed leaves block this account, and re-running `npm run seed` preserves leave requests you create as this user.
 
 ## Roles
 

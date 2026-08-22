@@ -8,6 +8,14 @@ import { HttpError } from '../utils/httpError.js';
 import { notifyLeaveDecision, notifyNewLeaveRequest } from '../utils/mailer.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
 import { employeeTextFilter } from '../utils/searchFilter.js';
+import {
+  dateKeyFromDate,
+  daysInclusiveKeys,
+  parseDateKey,
+  rangesOverlap,
+  todayKeyUtc,
+  utcFromDateKey,
+} from '../utils/leaveDates.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +25,7 @@ const LEAVE_TYPES = ['PAID', 'SICK', 'UNPAID'];
 const LEAVE_ENTITLEMENTS = { PAID: 18, SICK: 10, UNPAID: 5 };
 
 function daysInclusiveUTC(start, end) {
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  return daysInclusiveKeys(dateKeyFromDate(start), dateKeyFromDate(end));
 }
 
 // Malformed ids would throw a CastError (500) in findById
@@ -28,12 +36,8 @@ function assertValidId(id) {
 }
 
 function parseDate(value, field) {
-  const date = new Date(value);
-  if (typeof value !== 'string' || Number.isNaN(date.getTime())) {
-    throw new HttpError(400, `${field} must be a valid date (YYYY-MM-DD)`, 'VALIDATION_ERROR');
-  }
-  // Normalise to UTC midnight so day-granularity ranges compare cleanly
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const key = parseDateKey(value, field);
+  return utcFromDateKey(key);
 }
 
 // POST /api/leaves — apply for leave (type, date range, remarks, attachment for sick)
@@ -46,46 +50,51 @@ export async function applyLeave(req, res) {
   if (!LEAVE_TYPES.includes(type)) {
     throw new HttpError(400, 'Leave type must be PAID, SICK or UNPAID', 'VALIDATION_ERROR');
   }
-  const start = parseDate(startDate, 'startDate');
-  const end = parseDate(endDate, 'endDate');
-  if (end < start) {
+  const startKey = parseDateKey(startDate, 'startDate');
+  const endKey = parseDateKey(endDate, 'endDate');
+  if (endKey < startKey) {
     throw new HttpError(400, 'endDate cannot be before startDate', 'VALIDATION_ERROR');
   }
+  const start = utcFromDateKey(startKey);
+  const end = utcFromDateKey(endKey);
 
-  // #38: Block backdated leave for employees — startDate must be today or later
-  // Allows HR/ADMIN with allowPast flag (per spec), otherwise rejects past dates
-  const now = new Date();
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const todayKey = todayKeyUtc();
   const isPrivileged = req.user?.role === 'HR' || req.user?.role === 'ADMIN';
   const allowPast = req.body?.allowPast === true;
-  if (start < today && !(isPrivileged && allowPast)) {
+  if (startKey < todayKey && !(isPrivileged && allowPast)) {
     throw new HttpError(400, 'startDate cannot be in the past', 'VALIDATION_ERROR');
   }
 
-  // Reject overlapping PENDING/APPROVED leave for the same user
-  const overlap = await LeaveRequest.exists({
-    userId: req.user.id,
+  const existingLeaves = await LeaveRequest.find({
+    userId: req.user._id,
     status: { $in: ['PENDING', 'APPROVED'] },
-    startDate: { $lte: end },
-    endDate: { $gte: start },
-  });
-  if (overlap) {
+  }).select('startDate endDate status type');
+
+  const conflict = existingLeaves.find((leave) =>
+    rangesOverlap(
+      dateKeyFromDate(leave.startDate),
+      dateKeyFromDate(leave.endDate),
+      startKey,
+      endKey,
+    ),
+  );
+  if (conflict) {
+    const from = dateKeyFromDate(conflict.startDate);
+    const to = dateKeyFromDate(conflict.endDate);
     throw new HttpError(
       409,
-      'You already have a pending or approved leave overlapping these dates',
+      `You already have a ${conflict.status.toLowerCase()} ${conflict.type} leave from ${from} to ${to} that overlaps these dates`,
       'LEAVE_OVERLAP',
     );
   }
-
   const entitlement = LEAVE_ENTITLEMENTS[type];
   if (entitlement !== undefined) {
-    const requestedDays = daysInclusiveUTC(start, end);
-    const existingLeaves = await LeaveRequest.find({
-      userId: req.user.id,
-      type,
-      status: { $in: ['PENDING', 'APPROVED'] },
-    }).select('startDate endDate');
-    const usedDays = existingLeaves.reduce((sum, l) => sum + daysInclusiveUTC(l.startDate, l.endDate), 0);
+    const requestedDays = daysInclusiveKeys(startKey, endKey);
+    const sameTypeLeaves = existingLeaves.filter((l) => l.type === type);
+    const usedDays = sameTypeLeaves.reduce(
+      (sum, l) => sum + daysInclusiveKeys(dateKeyFromDate(l.startDate), dateKeyFromDate(l.endDate)),
+      0,
+    );
     if (usedDays + requestedDays > entitlement) {
       throw new HttpError(
         400,
