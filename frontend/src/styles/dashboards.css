@@ -132,9 +132,13 @@
 
 /* Week calendar strip */
 .week-strip {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: var(--space-xs);
+  min-height: 88px;
+  overflow: visible;
 }
 
 .week-cell {
@@ -243,6 +247,8 @@
 
 .table-card {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
 
 .table th {
@@ -332,16 +338,23 @@
 
 .leave-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-xs);
+  max-width: 100%;
 }
 
 /* Attendance bar chart */
 .bar-chart {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-end;
   gap: var(--space-sm);
+  min-height: 160px;
   height: 160px;
   padding-top: var(--space-sm);
+  overflow: visible;
 }
 
 .bar-col {
@@ -385,6 +398,31 @@
 @keyframes bar-grow {
   from { transform: scaleY(0); }
   to { transform: scaleY(1); }
+}
+
+/* Area chart — ensure visible above orb, not clipped, labels not overlapping */
+.area-chart {
+  position: relative;
+  z-index: 1;
+  min-height: 180px;
+  overflow: visible;
+}
+
+.area-chart svg {
+  overflow: visible;
+}
+
+.area-chart__labels {
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.area-chart__labels span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Leave balance progress bars */
@@ -705,8 +743,9 @@
 
 .row-detail__inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-lg);
+  gap: var(--space-base);
   padding: var(--space-sm) 0;
   animation: fade-up 0.25s ease both;
 }
@@ -902,16 +941,27 @@
     min-width: 560px;
   }
   .bar-chart {
+    min-height: 120px;
     height: 120px;
+  }
+  .area-chart {
+    min-height: 160px;
+  }
+  .area-chart__labels {
+    font-size: 10px;
+  }
+  .area-chart__labels span {
+    font-size: 10px;
   }
   .week-strip {
     grid-template-columns: repeat(5, minmax(0,1fr));
     overflow-x: auto;
   }
-  /* fix leave approvals mobile: buttons wrap, table scrolls */
+  /* merged fix: leave approvals mobile + attendance */
   .leave-actions {
     flex-wrap: wrap;
     max-width: 100%;
+    gap: var(--space-xs);
   }
   .leave-actions .btn {
     flex: 0 1 auto;
@@ -920,11 +970,16 @@
   }
   .row-detail__inner {
     flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+  .row-detail__inner .input {
+    max-width: 100% !important;
   }
   .table-card {
     -webkit-overflow-scrolling: touch;
   }
-  /* attendance week: prevent weekday overlap */
   .week-cell {
     min-width: 0;
     overflow: hidden;
