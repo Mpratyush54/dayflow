@@ -57,6 +57,7 @@ export default function AttendanceOverview() {
   const present = rows.filter((r) => r.status === 'PRESENT').length;
   const halfDay = rows.filter((r) => r.status === 'HALF_DAY').length;
   const absent = rows.filter((r) => r.status === 'ABSENT').length;
+  const onLeave = rows.filter((r) => r.status === 'LEAVE').length;
   const stillIn = rows.filter((r) => r.checkIn && !r.checkOut).length;
 
   return (
@@ -129,7 +130,7 @@ export default function AttendanceOverview() {
               <Card className="bento__mid stat-card card--tint-peach">
                 <Sparkline points={rows.map((r) => (r.status === 'ABSENT' ? 1 : 0))} tone="peach" />
                 <span className="stat-xl">{absent}</span>
-                <span className="stat-label">Absent</span>
+                <span className="stat-label">Absent{onLeave > 0 ? ` · ${onLeave} on leave` : ''}</span>
               </Card>
               <Card className="bento__mid stat-card card--tint-sky">
                 <Sparkline points={rows.map((r) => (r.checkIn && !r.checkOut ? 1 : 0))} tone="sky" />
@@ -167,6 +168,7 @@ export default function AttendanceOverview() {
                             <td>
                               {r.status === 'PRESENT' && <Badge tone="success">Present</Badge>}
                               {r.status === 'HALF_DAY' && <Badge tone="neutral">Half day</Badge>}
+                              {r.status === 'LEAVE' && <Badge tone="neutral">On leave</Badge>}
                               {r.status === 'ABSENT' && (data.isWeekend
                                 ? <Badge tone="neutral">Weekend</Badge>
                                 : <Badge tone="error">Absent</Badge>)}

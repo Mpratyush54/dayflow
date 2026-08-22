@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import LeaveRequest from '../models/leave.model.js';
 import User from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
-import { markLeaveInAttendance } from '../services/attendance.service.js';
 import { notifyLeaveDecision, notifyNewLeaveRequest } from '../utils/mailer.js';
 
 const LEAVE_TYPES = ['PAID', 'SICK', 'UNPAID'];
@@ -122,10 +121,7 @@ export async function reviewLeave(req, res) {
   leave.reviewerComment = comment?.trim() ? comment.trim() : undefined;
   await leave.save();
 
-  if (status === 'APPROVED') {
-    // Isolated integration point — no-ops until the attendance module (#7) lands
-    await markLeaveInAttendance(leave.userId, leave.startDate, leave.endDate);
-  }
+  // Attendance derives LEAVE days at read time — nothing to write here.
 
   const populated = await LeaveRequest.findById(leave.id).populate(
     'userId',

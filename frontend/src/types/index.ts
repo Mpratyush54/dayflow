@@ -59,7 +59,7 @@ export interface AttendanceDay {
   weekday: string;
   checkIn: string | null;
   checkOut: string | null;
-  status: 'PRESENT' | 'HALF_DAY' | null;
+  status: AttendanceStatus | null;
   workedHours: number;
 }
 
@@ -67,6 +67,8 @@ export interface AttendanceSummary {
   workdays: number;
   present: number;
   halfDay: number;
+  /** Workdays inside approved leave — derived server-side */
+  leave: number;
   absent: number;
   hours: number;
   rate: number | null;
@@ -82,7 +84,7 @@ export interface TeamAttendanceRow {
   user: User & { status?: string };
   checkIn: string | null;
   checkOut: string | null;
-  status: 'PRESENT' | 'HALF_DAY' | 'ABSENT';
+  status: AttendanceStatus;
   workedHours: number;
 }
 

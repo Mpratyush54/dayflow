@@ -174,6 +174,10 @@ export default function Attendance() {
                   <span className="summary-row__value">{data.summary.halfDay}</span>
                 </div>
                 <div className="summary-row">
+                  <span className="summary-row__label">On leave</span>
+                  <span className="summary-row__value">{data.summary.leave}</span>
+                </div>
+                <div className="summary-row">
                   <span className="summary-row__label">Absent</span>
                   <span className="summary-row__value">{data.summary.absent}</span>
                 </div>
@@ -209,6 +213,7 @@ export default function Attendance() {
                             <td>
                               {d.status === 'PRESENT' && <Badge tone="success">Present</Badge>}
                               {d.status === 'HALF_DAY' && <Badge tone="neutral">Half day</Badge>}
+                              {d.status === 'LEAVE' && <Badge tone="neutral">On leave</Badge>}
                               {!d.status && isWeekend && <Badge tone="neutral">Weekend</Badge>}
                               {!d.status && !isWeekend && <Badge tone="error">Absent</Badge>}
                             </td>
