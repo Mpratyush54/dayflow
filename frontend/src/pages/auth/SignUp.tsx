@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/layout/AuthLayout';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 
-export default function SignUp({ onSwitch }: { onSwitch: () => void }) {
+export default function SignUp() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ employeeId: '', email: '', password: '', role: 'EMPLOYEE' });
   const [error, setError] = useState('');
 
@@ -15,6 +17,7 @@ export default function SignUp({ onSwitch }: { onSwitch: () => void }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(''); // TODO: call POST /api/auth/signup
+    navigate('/dashboard');
   }
 
   return (
@@ -34,10 +37,7 @@ export default function SignUp({ onSwitch }: { onSwitch: () => void }) {
         <Button type="submit" className="btn--block">Sign up</Button>
       </form>
       <p className="auth__alt">
-        Already have an account?{' '}
-        <Button variant="text" type="button" onClick={onSwitch}>
-          Sign in
-        </Button>
+        Already have an account? <Link to="/signin">Sign in</Link>
       </p>
     </AuthLayout>
   );

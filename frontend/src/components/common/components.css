@@ -120,6 +120,17 @@
   letter-spacing: var(--type-title-sm-spacing);
   color: var(--color-ink);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.top-nav__brand::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-gradient-mint), var(--color-gradient-lavender), var(--color-gradient-peach));
 }
 
 .top-nav__links {
@@ -127,4 +138,14 @@
   gap: var(--space-lg);
   align-items: center;
   font: var(--type-nav-link);
+}
+
+.top-nav__links a {
+  color: var(--color-body);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.top-nav__links a:hover {
+  color: var(--color-ink);
 }

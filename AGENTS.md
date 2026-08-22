@@ -10,6 +10,11 @@ Repo layout: `backend/` (Node + Express + MongoDB API), `frontend/` (React 19 + 
 - Reuse shared components in `frontend/src/components/common/` (`Button`, `Input`, `Card`, `Badge`).
 - Brand: off-white canvas `#f5f5f5`, warm near-black ink `#292524`, Waldenburg Light display / Inter body, pastel gradient orbs as the only color moments. No neon or saturated accent colors.
 
+## Frontend rules (MANDATORY)
+
+- **URL-based routing**: every screen must have its own URL via `react-router-dom` (already installed). Never switch screens with component state alone. Existing routes: `/signin`, `/signup`, `/dashboard` (employee), `/admin`. Add new pages as new routes and navigate with `<Link>` / `useNavigate`.
+- **Animation**: pages and cards must animate in. Use the shared keyframes in `src/styles/base.css` (`fade-up`, `fade-in`, `orb-drift`) via the `.animate-in` class or `animation:` declarations; stagger cards with `animation-delay`. The gradient orb always drifts (`orb-drift`). Respect `prefers-reduced-motion` (already handled globally in `base.css`).
+
 ## Conventions
 
 - Backend: ESM (`"type": "module"`), routes in `src/routes/`, handlers in `src/controllers/`, keep Swagger spec (`src/docs/swagger.js`) updated when endpoints change.
