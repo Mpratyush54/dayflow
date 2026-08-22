@@ -30,28 +30,27 @@ export const swaggerSpec = {
         },
       },
     },
-    '/api/auth/signup': {
+    '/api/employees': {
       post: {
-        summary: 'Register a new user (Employee or HR)',
+        summary: 'Create an employee (HR/ADMIN only)',
         description:
-          'Creates an unverified account and issues a one-time email verification token ' +
-          '(valid 24h). Without SMTP configured, the verification link is logged and returned outside production.',
+          'Replaces public signup. The Employee ID is generated as ' +
+          '`OI + <2 first-name letters><2 last-name letters> + <join year> + <4-digit year serial>` ' +
+          '(e.g. OIJODO20220001) and a strong one-time password is returned exactly once. ' +
+          'The new account must verify email and change the system password on first sign-in.',
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['employeeId', 'email', 'password', 'role'],
+                required: ['firstName', 'lastName', 'email'],
                 properties: {
-                  employeeId: { type: 'string', example: 'EMP-0042' },
+                  firstName: { type: 'string', example: 'Jyoti' },
+                  lastName: { type: 'string', example: 'Doe' },
                   email: { type: 'string', format: 'email' },
-                  password: {
-                    type: 'string',
-                    minLength: 8,
-                    description: 'Min 8 chars with upper, lower, digit and special character',
-                  },
-                  role: { type: 'string', enum: ['EMPLOYEE', 'HR'] },
+                  role: { type: 'string', enum: ['EMPLOYEE', 'HR', 'ADMIN'], default: 'EMPLOYEE' },
                 },
               },
             },
@@ -59,10 +58,41 @@ export const swaggerSpec = {
         },
         responses: {
           201: {
-            description: 'User created; verification required before signing in',
+            description:
+              'Employee created — response includes employeeId and the one-time generatedPassword',
           },
-          400: { description: 'Invalid input (password rules, email format)' },
-          409: { description: 'Email or Employee ID already registered' },
+          401: { description: 'Not signed in' },
+          403: { description: 'Requires HR or ADMIN role' },
+          409: { description: 'Email already registered' },
+        },
+      },
+    },
+    '/api/auth/change-password': {
+      post: {
+        summary: 'Change own password (clears the forced first-time change)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['currentPassword', 'newPassword'],
+                properties: {
+                  currentPassword: { type: 'string' },
+                  newPassword: {
+                    type: 'string',
+                    minLength: 8,
+                    description: 'Min 8 chars with upper, lower, digit and special character',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Password updated' },
+          401: { description: 'Current password incorrect or not signed in' },
         },
       },
     },

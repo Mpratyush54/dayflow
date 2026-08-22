@@ -3,13 +3,12 @@ import User from '../models/user.model.js';
 import RefreshToken from '../models/refreshToken.model.js';
 import { env } from '../config/env.js';
 import { HttpError } from '../utils/httpError.js';
-import { signupSchema, signinSchema } from '../utils/validation.js';
+import { signinSchema, changePasswordSchema } from '../utils/validation.js';
 import {
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
   hashToken,
-  generateVerificationToken,
   refreshCookieOptions,
   REFRESH_COOKIE,
 } from '../utils/tokens.js';
@@ -23,46 +22,6 @@ async function issueSession(res, user) {
   await RefreshToken.create({ user: user._id, tokenHash: hashToken(jti), expiresAt });
   res.cookie(REFRESH_COOKIE, token, refreshCookieOptions());
   return accessToken;
-}
-
-// POST /api/auth/signup — register with employeeId, email, password, role (EMPLOYEE | HR)
-export async function signup(req, res) {
-  const data = signupSchema.parse(req.body);
-
-  const existing = await User.findOne({
-    $or: [{ email: data.email }, { employeeId: data.employeeId.toUpperCase() }],
-  })
-    .select('email employeeId')
-    .lean();
-  if (existing) {
-    const message =
-      existing.email === data.email
-        ? 'An account with this email already exists'
-        : 'This Employee ID is already registered';
-    throw new HttpError(409, message, 'ACCOUNT_EXISTS');
-  }
-
-  const { token, tokenHash, expiresAt } = generateVerificationToken();
-  const user = await User.create({
-    employeeId: data.employeeId,
-    email: data.email,
-    passwordHash: await bcrypt.hash(data.password, SALT_ROUNDS),
-    role: data.role,
-    isVerified: false,
-    verificationTokenHash: tokenHash,
-    verificationTokenExpires: expiresAt,
-  });
-
-  // No SMTP configured yet — log the verification link, and expose it outside
-  // production so the flow can be completed end-to-end during development.
-  const verificationUrl = `${env.clientUrl}/verify-email?token=${token}`;
-  console.log(`[auth] Email verification for ${data.email}: ${verificationUrl}`);
-
-  res.status(201).json({
-    message: 'Account created. Please verify your email to sign in.',
-    user: user.toJSON(),
-    ...(env.isProd ? {} : { verificationUrl }),
-  });
 }
 
 // GET /api/auth/verify-email?token=... — one-time token, valid 24h
@@ -102,7 +61,12 @@ export async function signin(req, res) {
   }
 
   const accessToken = await issueSession(res, user);
-  res.json({ accessToken, user: user.toJSON() });
+  res.json({
+    accessToken,
+    user: user.toJSON(),
+    // True on first login after HR created the account — UI must force a password change
+    mustChangePassword: user.mustChangePassword === true,
+  });
 }
 
 // POST /api/auth/refresh — exchanges the httpOnly refresh cookie for a new access token
@@ -154,4 +118,28 @@ export async function signout(req, res) {
 // GET /api/auth/me — current user (behind requireAuth)
 export async function me(req, res) {
   res.json({ user: req.user.toJSON() });
+}
+
+// POST /api/auth/change-password — change own password; clears the
+// mustChangePassword flag set at HR account creation
+export async function changePassword(req, res, next) {
+  try {
+    const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+
+    const user = await User.findById(req.user.id).select('+passwordHash');
+    if (!user) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+    if (!(await user.comparePassword(currentPassword))) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    user.mustChangePassword = false;
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
+  }
 }

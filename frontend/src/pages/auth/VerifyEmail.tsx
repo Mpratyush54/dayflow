@@ -8,16 +8,15 @@ type State = 'working' | 'ok' | 'error';
 export default function VerifyEmail() {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
-  const [state, setState] = useState<State>('working');
-  const [message, setMessage] = useState('');
+  // Missing token is known at first render — no synchronous setState in the effect
+  const [state, setState] = useState<State>(token ? 'working' : 'error');
+  const [message, setMessage] = useState(
+    token ? '' : 'Verification token is missing from the link.',
+  );
 
   useEffect(() => {
+    if (!token) return;
     let cancelled = false;
-    if (!token) {
-      setState('error');
-      setMessage('Verification token is missing from the link.');
-      return;
-    }
     api
       .get<{ message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then((data) => {

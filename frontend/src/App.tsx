@@ -2,8 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import SignIn from './pages/auth/SignIn';
-import SignUp from './pages/auth/SignUp';
 import VerifyEmail from './pages/auth/VerifyEmail';
+import ChangePassword from './pages/auth/ChangePassword';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import Profile from './pages/employee/Profile';
 import Attendance from './pages/employee/Attendance';
@@ -15,9 +15,8 @@ import AdminAttendance from './pages/admin/Attendance';
 import LeaveApprovals from './pages/admin/LeaveApprovals';
 import Payroll from './pages/admin/Payroll';
 
-// Sign-in/sign-up are owned by the auth workstream. Until that lands, a dev
-// link under the auth pages opens the employee profile using a dev token
-// (see src/utils/devUser.ts).
+// There is no public sign-up: HR/Admin create accounts via POST /api/employees
+// (employeeId + one-time password are system-generated).
 export default function App() {
   return (
     <BrowserRouter>
@@ -25,11 +24,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/signin" replace />} />
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Any signed-in user */}
           <Route element={<ProtectedRoute />}>
+            <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/dashboard" element={<EmployeeDashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/attendance" element={<Attendance />} />
