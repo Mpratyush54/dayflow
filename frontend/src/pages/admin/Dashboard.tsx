@@ -124,7 +124,7 @@ export default function AdminDashboard() {
             <Donut value={75} label="Payroll processed" sublabel="3 of 4 employees" />
           </Card>
 
-          <Card className="bento__wide" heading="Employees">
+          <Card className="bento__wide table-card" heading="Employees">
             <table className="table">
               <thead>
                 <tr><th>ID</th><th>Name</th><th>Role</th><th>Today</th></tr>

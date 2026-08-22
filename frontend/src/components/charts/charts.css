@@ -203,17 +203,18 @@
 
 .donut__num {
   font: var(--type-display-sm);
+  color: var(--color-ink);
 }
 
 .donut__sub {
   font: var(--type-caption);
-  color: var(--color-muted);
+  color: var(--color-body);
   margin-top: 2px;
 }
 
 .donut__label {
   font: var(--type-caption);
-  color: var(--color-muted);
+  color: var(--color-body);
   margin-top: var(--space-sm);
 }
 
@@ -259,16 +260,24 @@
   font: var(--type-caption-uppercase);
   letter-spacing: var(--type-caption-uppercase-spacing);
   text-transform: uppercase;
-  color: var(--color-muted-soft);
+  color: var(--color-muted);
   margin-top: var(--space-xs);
+}
+
+.area-chart__labels span {
+  flex: 1;
+  text-align: center;
 }
 
 .area-chart__peak {
   position: absolute;
   top: 0;
   right: 0;
-  font: var(--type-caption);
-  color: var(--color-muted);
+  font: 600 11px/1 var(--font-body);
+  color: var(--color-body-strong);
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-pill);
+  padding: 5px 10px;
 }
 
 /* Sparkline */
