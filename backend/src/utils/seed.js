@@ -33,10 +33,7 @@ const SEED_USERS = [
       allowances: { house_rent: 8000, travel: 1500 },
       deductions: { provident_fund: 1800, tax: 2200 },
     },
-    documents: [
-      { name: 'Offer letter', url: 'https://example.com/docs/offer-letter.pdf' },
-      { name: 'ID proof', url: 'https://example.com/docs/id-proof.pdf' },
-    ],
+    documents: [],
   },
   {
     employeeId: 'DF-2001',

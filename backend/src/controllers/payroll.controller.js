@@ -152,24 +152,53 @@ export async function slip(req, res) {
     if (!targetUser) throw new HttpError(404, 'Employee not found');
   }
 
-  const payroll = await Payroll.findOne({ userId: targetUser._id });
-  if (!payroll) {
-    throw new HttpError(
-      422,
-      'No payroll record for this employee yet — HR needs to set a salary structure',
-      'NO_PAYROLL',
-    );
+  // Try Payroll collection first; fallback to User.salary (seeded demo data)
+  let payroll = await Payroll.findOne({ userId: targetUser._id });
+  let allowances;
+  let deductions;
+  let basic;
+  let currency;
+  if (payroll) {
+    const toObj = (v) => {
+      if (!v) return {};
+      if (v instanceof Map) return Object.fromEntries(v);
+      if (typeof v === 'object') return v;
+      return {};
+    };
+    allowances = toObj(payroll.allowances);
+    deductions = toObj(payroll.deductions);
+    basic = payroll.basicSalary ?? 0;
+    currency = payroll.currency ?? 'INR';
+  } else {
+    // fallback: use embedded salary on User (seeded) — avoids 404 before HR creates Payroll
+    const fullUser = await User.findById(targetUser._id).select('salary employeeId name email role designation department');
+    const salary = (fullUser && fullUser.salary) || {};
+    const toObj = (v) => {
+      if (!v) return {};
+      if (v instanceof Map) return Object.fromEntries(v);
+      if (typeof v === 'object') return v;
+      return {};
+    };
+    if (!fullUser || (salary.basicSalary === undefined && Object.keys(toObj(salary.allowances)).length === 0 && Object.keys(toObj(salary.deductions)).length === 0)) {
+      throw new HttpError(
+        422,
+        'No payroll record for this employee yet — HR needs to set a salary structure',
+        'NO_PAYROLL',
+      );
+    }
+    // use seeded salary if payroll not yet created
+    targetUser = fullUser;
+    allowances = toObj(salary.allowances);
+    deductions = toObj(salary.deductions);
+    basic = salary.basicSalary ?? 0;
+    currency = salary.currency ?? 'INR';
   }
-
-  const allowances = Object.fromEntries(payroll.allowances ?? []);
-  const deductions = Object.fromEntries(payroll.deductions ?? []);
-  const basic = payroll.basicSalary ?? 0;
   const totalAllowances = Object.values(allowances).reduce((a, b) => a + b, 0);
   const totalDeductions = Object.values(deductions).reduce((a, b) => a + b, 0);
   const gross = basic + totalAllowances;
   const net = gross - totalDeductions;
 
-  const code = CURRENCY_CODES[payroll.currency] ?? payroll.currency ?? 'INR';
+  const code = CURRENCY_CODES[currency] ?? currency ?? 'INR';
   const money = (n) => `${code} ${Number(n).toLocaleString('en-IN')}`;
 
   res.setHeader('Content-Type', 'application/pdf');

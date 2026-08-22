@@ -5,6 +5,7 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Sparkline from '../../components/charts/Sparkline';
+import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
 import { getTeamAttendance } from '../../api/attendance';
@@ -39,6 +40,8 @@ export default function AttendanceOverview() {
   const [data, setData] = useState<TeamAttendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const page = Math.max(Number(searchParams.get('page') || 1), 1);
+  const PAGE_SIZE = 10;
 
   const load = useCallback(async (forDate: string) => {
     setLoading(true);
@@ -62,12 +65,15 @@ export default function AttendanceOverview() {
   const absent = rows.filter((r) => r.status === 'ABSENT').length;
   const onLeave = rows.filter((r) => r.status === 'LEAVE').length;
   const stillIn = rows.filter((r) => r.checkIn && !r.checkOut).length;
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <Sidebar
       user={{ name: 'HR', role: 'HR · Admin', initials: '··' }}
       items={[
-        { to: '/admin', label: 'Overview', icon: '◧' },
+        { to: '/admin', label: 'Overview', icon: '◧', end: true },
         { to: '/admin/employees', label: 'Employees', icon: '👥' },
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓' },
@@ -146,24 +152,25 @@ export default function AttendanceOverview() {
                 <span className="stat-label">Still in</span>
               </Card>
 
-              <Card className="bento__wide" heading={`Attendance · ${data.date}`}>
+              <Card className="bento__wide" heading={`Attendance · ${data.date} (${rows.length})`}>
                 {rows.length === 0 ? (
                   <p className="dash-sub">No employees yet.</p>
                 ) : (
-                  <div className="table-card">
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>Employee</th>
-                          <th>Role</th>
-                          <th>Checked in</th>
-                          <th>Checked out</th>
-                          <th>Hours</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((r) => (
+                  <>
+                    <div className="table-card">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Employee</th>
+                            <th>Role</th>
+                            <th>Checked in</th>
+                            <th>Checked out</th>
+                            <th>Hours</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedRows.map((r) => (
                           <tr key={r.user.id} className="animate-in">
                             <td>
                               <span className="sidebar__username">{r.user.name?.trim() || r.user.email}</span>{' '}
@@ -186,6 +193,20 @@ export default function AttendanceOverview() {
                       </tbody>
                     </table>
                   </div>
+                    {rows.length > PAGE_SIZE && (
+                      <Pagination
+                        page={safePage}
+                        pages={totalPages}
+                        total={rows.length}
+                        onPageChange={(p) => {
+                          const next = new URLSearchParams(searchParams);
+                          if (p === 1) next.delete('page');
+                          else next.set('page', String(p));
+                          setSearchParams(next);
+                        }}
+                      />
+                    )}
+                  </>
                 )}
               </Card>
             </div>

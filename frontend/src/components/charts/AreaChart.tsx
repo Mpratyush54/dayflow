@@ -16,13 +16,14 @@ function toPath(points: number[], w: number, h: number, max: number) {
 export default function AreaChart({ points, labels, height = 180, suffix = '', id }: AreaChartProps) {
   const w = 600;
   const h = 180;
-  const max = Math.max(...points) * 1.15;
-  const line = toPath(points, w, h, max);
-  const area = `${line} L ${w} ${h} L 0 ${h} Z`;
-  const maxVal = Math.max(...points);
+  const rawMax = points.length ? Math.max(...points) : 0;
+  const max = rawMax > 0 ? rawMax * 1.15 : 1;
+  const line = points.length > 1 ? toPath(points, w, h, max) : `M 0 ${h} L ${w} ${h}`;
+  const area = points.length > 1 ? `${line} L ${w} ${h} L 0 ${h} Z` : `M 0 ${h} L ${w} ${h} Z`;
+  const maxVal = rawMax;
   const maxIndex = points.indexOf(maxVal);
-  const step = w / (points.length - 1);
-  const peakX = maxIndex * step;
+  const step = points.length > 1 ? w / (points.length - 1) : w;
+  const peakX = maxIndex >= 0 ? maxIndex * step : w / 2;
   const peakY = h - (maxVal / max) * h;
 
   return (
