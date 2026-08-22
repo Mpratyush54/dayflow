@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AppLayout from '../../components/layout/AppLayout';
+import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Donut from '../../components/charts/Donut';
+import AreaChart from '../../components/charts/AreaChart';
+import Heatmap from '../../components/charts/Heatmap';
+import { useCountUp } from '../../hooks/useCountUp';
 
-const week = [
-  { day: 'Mon', date: '17', status: 'PRESENT' },
-  { day: 'Tue', date: '18', status: 'PRESENT' },
-  { day: 'Wed', date: '19', status: 'HALF_DAY' },
-  { day: 'Thu', date: '20', status: 'PRESENT' },
-  { day: 'Fri', date: '21', status: 'LEAVE' },
+const hoursWeek = [7.5, 8, 4, 8.5, 0, 0, 0];
+const weekLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const month = Array.from({ length: 30 }, (_, i) => ({
+  date: i + 1,
+  level: ([3, 2, 3, 3, 0, 1, 1, 3, 2, 3, 3, 1, 0, 0, 2, 3, 3, 3, 2, 1, 1, 3, 3, 2, 3, 3, 0, 1, 2, 3][i] as 0 | 1 | 2 | 3),
+}));
+
+const balances = [
+  { label: 'Paid leave', used: 6, total: 18, tone: 'mint' },
+  { label: 'Sick leave', used: 2, total: 10, tone: 'peach' },
+  { label: 'Unpaid leave', used: 0, total: 5, tone: 'lavender' },
 ];
 
 const activity = [
@@ -19,101 +29,62 @@ const activity = [
   { text: 'Payslip for July is available', when: 'Aug 1' },
 ];
 
-const balances = [
-  { label: 'Paid leave', used: 6, total: 18, tone: 'mint' },
-  { label: 'Sick leave', used: 2, total: 10, tone: 'peach' },
-  { label: 'Unpaid leave', used: 0, total: 5, tone: 'lavender' },
-];
-
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
   const [checkedIn, setCheckedIn] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const attendance = useCountUp(92, 900, 200);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   return (
-    <AppLayout
-      links={
-        <>
-          <a href="#">Profile</a>
-          <a href="#">Attendance</a>
-          <a href="#">Leave</a>
-          <Button variant="text" onClick={() => navigate('/signin')}>Logout</Button>
-        </>
-      }
+    <Sidebar
+      user={{ name: 'Pratyush M.', role: 'Employee · EMP-0042', initials: 'PM' }}
+      items={[
+        { to: '/dashboard', label: 'Dashboard', icon: '◧' },
+        { to: '/profile', label: 'Profile', icon: '👤' },
+        { to: '/attendance', label: 'Attendance', icon: '🗓' },
+        { to: '/leaves', label: 'Leave', icon: '🌴', badge: '1' },
+        { to: '/payslip', label: 'Payslip', icon: '💵' },
+      ]}
     >
+      <div className="container page">
       <div className="orb page__orb" aria-hidden />
 
       <div className="dash-head">
         <div>
-          <p className="dash-sub">Friday, August 22</p>
+          <p className="dash-sub">{now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · {time}</p>
           <h1>Good morning,<br />Pratyush</h1>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <p className="dash-sub" style={{ marginBottom: 8 }}>Employee · EMP-0042</p>
-          <Badge>{checkedIn ? 'Checked in' : 'Not checked in'}</Badge>
-        </div>
-      </div>
-
-      <div className="quick-cards">
-        <Card>
-          <span className="chip" aria-hidden>👤</span>
-          <h3 className="card__heading">Profile</h3>
-          <p>Personal &amp; job details, documents.</p>
-          <Button variant="outline">View profile</Button>
-        </Card>
-        <Card>
-          <span className="chip" aria-hidden>🗓</span>
-          <h3 className="card__heading">Attendance</h3>
-          <p>Daily &amp; weekly check-in history.</p>
-          <Button variant="outline">View attendance</Button>
-        </Card>
-        <Card>
-          <span className="chip" aria-hidden>🌴</span>
-          <h3 className="card__heading">Leave requests</h3>
-          <p>Apply and track time-off status.</p>
-          <Button variant="outline">Apply for leave</Button>
-        </Card>
-        <Card>
-          <span className="chip" aria-hidden>⏱</span>
-          <h3 className="card__heading">Today</h3>
-          <p>{checkedIn ? 'Checked in — have a good day.' : 'Not checked in yet.'}</p>
+        <div className="hero-actions">
+          <Badge tone={checkedIn ? 'success' : 'neutral'}>{checkedIn ? 'Checked in' : 'Not checked in'}</Badge>
           <Button variant={checkedIn ? 'outline' : 'primary'} onClick={() => setCheckedIn(!checkedIn)}>
             {checkedIn ? 'Check out' : 'Check in'}
           </Button>
-        </Card>
+        </div>
       </div>
 
-      <div className="dash-grid">
-        <Card heading="This week">
-          <div className="week-strip">
-            {week.map((d) => (
-              <div
-                key={d.date}
-                className={`week-cell ${d.status === 'PRESENT' ? 'week-cell--present' : d.status === 'LEAVE' ? 'week-cell--leave' : ''}`}
-              >
-                <span className="week-cell__day">{d.day}</span>
-                <span className="week-cell__date">{d.date}</span>
-                <span className="week-cell__status">
-                  {d.status === 'PRESENT' ? '9:02' : d.status === 'HALF_DAY' ? 'half' : d.status === 'LEAVE' ? 'leave' : '—'}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="dash-sub" style={{ marginTop: 16, marginBottom: 8 }}>August 17 – 21 · 3 present · 1 half-day · 1 leave</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Badge tone="success">present ×3</Badge>
-            <Badge>half-day</Badge>
-            <Badge tone="error">leave</Badge>
-          </div>
+      <div className="viz-grid">
+        <Card className="viz-grid__donut">
+          <Donut value={92} label="Attendance · August" sublabel={`${attendance}% present`} />
         </Card>
-        <Card heading="Recent activity">
-          <ul className="activity-list">
-            {activity.map((a) => (
-              <li key={a.text}>
-                <span>{a.text}</span>
-                <span className="activity-when">{a.when}</span>
-              </li>
-            ))}
-          </ul>
+        <Card heading="Hours this week">
+          <AreaChart id="hours" points={hoursWeek} labels={weekLabels} suffix="h" />
+        </Card>
+        <Card heading="August at a glance">
+          <Heatmap days={month} />
+          <div className="heatmap-legend">
+            <span>less</span>
+            <span className="heatmap__cell heatmap__cell--1" />
+            <span className="heatmap__cell heatmap__cell--2" />
+            <span className="heatmap__cell heatmap__cell--3" />
+            <span>more</span>
+          </div>
         </Card>
       </div>
 
@@ -128,7 +99,7 @@ export default function EmployeeDashboard() {
               <div className="balance-track">
                 <div
                   className={`balance-fill balance-fill--${b.tone}`}
-                  style={{ width: `${(b.total - b.used) / b.total * 100}%`, animationDelay: '0.2s' }}
+                  style={{ width: `${((b.total - b.used) / b.total) * 100}%`, animationDelay: '0.2s' }}
                 />
               </div>
             </div>
@@ -152,6 +123,16 @@ export default function EmployeeDashboard() {
             <span className="summary-row__value">₹ 61,300</span>
           </div>
         </Card>
+        <Card heading="Recent activity">
+          <ul className="activity-list">
+            {activity.map((a) => (
+              <li key={a.text}>
+                <span>{a.text}</span>
+                <span className="activity-when">{a.when}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       </div>
 
       <div className="cta-band">
@@ -160,8 +141,9 @@ export default function EmployeeDashboard() {
           <h3 className="cta-band__title">Your July payslip is ready</h3>
           <p className="cta-band__sub">Net pay ₹ 61,300 · credited Aug 1</p>
         </div>
-        <Button variant="outline">View payslip</Button>
+        <Button variant="outline" onClick={() => navigate('/payslip')}>View payslip</Button>
       </div>
-    </AppLayout>
+      </div>
+    </Sidebar>
   );
 }

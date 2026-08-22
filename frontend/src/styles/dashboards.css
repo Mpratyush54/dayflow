@@ -509,6 +509,66 @@
   opacity: 0.4;
 }
 
+/* Hero actions */
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  align-self: flex-end;
+}
+
+/* Viz grid: donut + charts row */
+.viz-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr 1fr;
+  gap: var(--space-base);
+  margin-bottom: var(--space-lg);
+  align-items: stretch;
+}
+
+.viz-grid--wide {
+  grid-template-columns: 1fr 260px;
+}
+
+.viz-grid__donut {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 1000px) {
+  .viz-grid,
+  .viz-grid--wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Stat cards with sparkline */
+.stat-row .card {
+  gap: var(--space-xs);
+}
+
+.stat-row .sparkline {
+  margin-top: var(--space-xs);
+}
+
+/* Heatmap legend */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-sm);
+  font: var(--type-caption);
+  color: var(--color-muted-soft);
+}
+
+.heatmap-legend .heatmap__cell {
+  width: 12px;
+  aspect-ratio: 1;
+}
+
 /* Entrance animations */
 .quick-cards .card,
 .stat-row .card,
@@ -525,3 +585,11 @@
 .stat-row .card:nth-child(4) { animation-delay: 0.21s; }
 
 .dash-grid .card { animation-delay: 0.18s; }
+
+.viz-grid .card {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.cta-band {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+}

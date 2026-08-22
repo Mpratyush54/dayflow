@@ -1,8 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import AppLayout from '../../components/layout/AppLayout';
+import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Donut from '../../components/charts/Donut';
+import AreaChart from '../../components/charts/AreaChart';
+import Sparkline from '../../components/charts/Sparkline';
+import { useCountUp } from '../../hooks/useCountUp';
 
 const employees = [
   { id: 'EMP-0042', name: 'Pratyush M.', initials: 'PM', tone: 'mint', role: 'Employee', status: 'PRESENT' },
@@ -16,30 +20,26 @@ const pendingLeaves = [
   { id: 'LV-105', who: 'Rohan S. · EMP-0051', detail: 'Paid · Aug 28', initials: 'RS', tone: 'lavender' },
 ];
 
-const attendanceWeek = [
-  { day: 'Mon', present: 4 },
-  { day: 'Tue', present: 4 },
-  { day: 'Wed', present: 3 },
-  { day: 'Thu', present: 4 },
-  { day: 'Fri', present: 3 },
-  { day: 'Sat', present: 2 },
-  { day: 'Sun', present: 0 },
-];
+const attendanceTrend = [3, 4, 4, 3, 4, 3, 2, 4, 4, 3, 4, 4, 3, 4];
+const trendLabels = ['W1', '', 'W2', '', 'W3', '', 'W4'];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const present = useCountUp(3, 700, 150);
+  const pending = useCountUp(2, 700, 250);
+
   return (
-    <AppLayout
-      links={
-        <>
-          <a href="#">Employees</a>
-          <a href="#">Attendance</a>
-          <a href="#">Leave approvals</a>
-          <a href="#">Payroll</a>
-          <Button variant="text" onClick={() => navigate('/signin')}>Logout</Button>
-        </>
-      }
+    <Sidebar
+      user={{ name: 'Meera T.', role: 'HR · Admin', initials: 'MT' }}
+      items={[
+        { to: '/admin', label: 'Overview', icon: '◧' },
+        { to: '/admin/employees', label: 'Employees', icon: '👥' },
+        { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
+        { to: '/admin/approvals', label: 'Approvals', icon: '✓', badge: '2' },
+        { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
+      ]}
     >
+      <div className="container page">
       <div className="orb page__orb" aria-hidden />
 
       <div className="dash-head">
@@ -47,25 +47,41 @@ export default function AdminDashboard() {
           <p className="dash-sub">Friday, August 22</p>
           <h1>Admin overview</h1>
         </div>
-        <Button variant="outline" style={{ alignSelf: 'flex-end' }}>Export report</Button>
+        <div className="hero-actions">
+          <Button variant="outline">Export report</Button>
+          <Button onClick={() => navigate('/admin/approvals')}>Review approvals</Button>
+        </div>
       </div>
 
       <div className="stat-row">
         <Card>
-          <span className="stat">4</span>
+          <span className="stat">{employees.length}</span>
           <span className="stat-label">Employees</span>
+          <Sparkline points={[3, 3, 4, 4, 4]} tone="mint" />
         </Card>
         <Card>
-          <span className="stat">3</span>
+          <span className="stat">{present}</span>
           <span className="stat-label">Present today</span>
+          <Sparkline points={[3, 4, 4, 3, 3]} tone="sky" />
         </Card>
         <Card>
-          <span className="stat">2</span>
+          <span className="stat">{pending}</span>
           <span className="stat-label">Pending approvals</span>
+          <Sparkline points={[1, 2, 1, 3, 2]} tone="peach" />
         </Card>
         <Card className="card--dark">
           <span className="stat">1</span>
           <span className="stat-label">On leave</span>
+          <Sparkline points={[0, 1, 0, 1, 1]} tone="lavender" />
+        </Card>
+      </div>
+
+      <div className="viz-grid viz-grid--wide">
+        <Card heading="Attendance trend">
+          <AreaChart id="admin-attendance" points={attendanceTrend} labels={trendLabels} height={200} />
+        </Card>
+        <Card className="viz-grid__donut">
+          <Donut value={75} label="Payroll processed" sublabel="3 of 4 employees" />
         </Card>
       </div>
 
@@ -113,44 +129,15 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="dash-grid">
-        <Card heading="Attendance this week">
-          <div className="bar-chart">
-            {attendanceWeek.map((d) => (
-              <div key={d.day} className="bar-col">
-                <span className="bar-value">{d.present}</span>
-                <div className="bar" style={{ height: `${(d.present / 4) * 100}%` }} />
-                <span className="bar-label">{d.day}</span>
-              </div>
-            ))}
-          </div>
-          <p className="dash-sub" style={{ marginTop: 16 }}>Employees present per day · Aug 17 – 23</p>
-        </Card>
-        <Card className="card--dark" heading="Payroll summary">
-          <div className="summary-row">
-            <span className="summary-row__label">Total payroll (Aug)</span>
-            <span className="summary-row__value">₹ 12,40,000</span>
-          </div>
-          <div className="summary-row">
-            <span className="summary-row__label">Employees processed</span>
-            <span className="summary-row__value">3 / 4</span>
-          </div>
-          <div className="summary-row">
-            <span className="summary-row__label">Next payroll run</span>
-            <span className="summary-row__value">Sep 1</span>
-          </div>
-          <Button variant="outline" style={{ marginTop: 16 }}>Manage payroll</Button>
-        </Card>
-      </div>
-
       <div className="cta-band">
         <div className="orb" aria-hidden />
         <div className="cta-band__text">
           <h3 className="cta-band__title">August payroll is almost ready</h3>
           <p className="cta-band__sub">3 of 4 salary structures reviewed · 1 pending update</p>
         </div>
-        <Button>Review payroll</Button>
+        <Button onClick={() => navigate('/admin/payroll')}>Review payroll</Button>
       </div>
-    </AppLayout>
+      </div>
+    </Sidebar>
   );
 }
