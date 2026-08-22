@@ -188,14 +188,6 @@ export default function EmployeeList() {
                 <h1>Employees</h1>
               </div>
               <div className="hero-actions">
-                <Input
-                  label="Search"
-                  type="search"
-                  placeholder="Name, email or ID"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="list-search-input"
-                />
                 <div style={{ display: 'flex', gap: 8, border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-pill)', padding: 4 }}>
                   <Button variant={viewMode === 'grid' ? 'primary' : 'text'} onClick={() => setViewMode('grid')}>Grid</Button>
                   <Button variant={viewMode === 'table' ? 'primary' : 'text'} onClick={() => setViewMode('table')}>Table</Button>
@@ -205,8 +197,35 @@ export default function EmployeeList() {
               </div>
             </div>
 
+            <div className="list-search-bar">
+              <Input
+                label="Search employees"
+                type="search"
+                placeholder="Name, email or employee ID"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="list-search-input"
+              />
+              {searchQ && (
+                <Button variant="outline" onClick={() => setSearchInput('')}>Clear</Button>
+              )}
+              {pagination && (
+                <span className="dash-sub list-search-bar__meta">{pagination.total} result{pagination.total === 1 ? '' : 's'}</span>
+              )}
+            </div>
+
             <Card className={viewMode === 'grid' ? '' : 'table-card'} heading={`All employees${pagination ? ` (${pagination.total})` : employees ? ` (${employees.length})` : ''}`}>
               {employees.length === 0 ? (
+                searchQ ? (
+                  <div className="empty-state empty-state--card animate-in" role="status" aria-live="polite">
+                    <div className="empty-state__illustration" aria-hidden>🔍</div>
+                    <h3 className="empty-state__title">No matches</h3>
+                    <p className="empty-state__desc">No employees matching &ldquo;{searchQ}&rdquo;. Try a different name, email, or employee ID.</p>
+                    <div className="empty-state__actions">
+                      <Button variant="outline" onClick={() => setSearchInput('')}>Clear search</Button>
+                    </div>
+                  </div>
+                ) : (
                 <div className="empty-state empty-state--card animate-in" role="status" aria-live="polite" aria-label="No employees yet">
                   <div className="empty-state__illustration" aria-hidden>👥</div>
                   <h3 className="empty-state__title">No employees yet</h3>
@@ -216,6 +235,7 @@ export default function EmployeeList() {
                     <Button variant="outline" onClick={() => navigate('/admin')}>Back to overview</Button>
                   </div>
                 </div>
+                )
               ) : viewMode === 'grid' ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 'var(--space-base)' }}>
