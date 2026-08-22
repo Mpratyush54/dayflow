@@ -179,7 +179,13 @@ export default function Attendance() {
             <div className="bento">
               <Card className="bento__hero card--grad" heading="Hours this week">
                 <div className="art" style={{ marginBottom: 16 }} aria-hidden />
-                <AreaChart id="attendance-hours" points={chartPoints} labels={chartLabels} suffix="h" height={200} />
+                {chartPoints.length === 0 || chartPoints.every((p) => p === 0) ? (
+                  <p className="dash-sub" style={{ minHeight: 200, display: 'grid', placeItems: 'center', margin: 0 }}>
+                    No hours logged this week — check in to start tracking
+                  </p>
+                ) : (
+                  <AreaChart id="attendance-hours" points={chartPoints} labels={chartLabels} suffix="h" height={200} />
+                )}
                 <p className="dash-sub">
                   {data.summary.hours}h logged · {data.summary.workdays} workdays
                 </p>

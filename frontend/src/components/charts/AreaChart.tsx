@@ -16,13 +16,14 @@ function toPath(points: number[], w: number, h: number, max: number) {
 export default function AreaChart({ points, labels, height = 180, suffix = '', id }: AreaChartProps) {
   const w = 600;
   const h = 180;
-  const max = Math.max(...points) * 1.15;
-  const line = toPath(points, w, h, max);
+  const maxRaw = Math.max(...points, 0);
+  const max = Math.max(maxRaw * 1.15, 1);
+  const line = points.length > 1 ? toPath(points, w, h, max) : `M 0 ${h} L ${w} ${h}`;
   const area = `${line} L ${w} ${h} L 0 ${h} Z`;
-  const maxVal = Math.max(...points);
-  const maxIndex = points.indexOf(maxVal);
-  const step = w / (points.length - 1);
-  const peakX = maxIndex * step;
+  const maxVal = Math.max(...points, 0);
+  const maxIndex = maxRaw > 0 ? points.indexOf(maxVal) : -1;
+  const step = points.length > 1 ? w / (points.length - 1) : w;
+  const peakX = maxIndex >= 0 ? maxIndex * step : w / 2;
   const peakY = h - (maxVal / max) * h;
 
   return (
@@ -49,7 +50,7 @@ export default function AreaChart({ points, labels, height = 180, suffix = '', i
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
         />
-        <circle className="area-chart__dot" cx={peakX} cy={peakY} r="5" fill="var(--color-gradient-sky)" />
+        {maxRaw > 0 && <circle className="area-chart__dot" cx={peakX} cy={peakY} r="5" fill="var(--color-gradient-sky)" />}
       </svg>
       <div className="area-chart__labels">
         {labels?.map((l) => <span key={l}>{l}</span>)}
