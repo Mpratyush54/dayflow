@@ -1,0 +1,60 @@
+/* Base styles built on design tokens — see design/DESIGN.md */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100vh;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-body);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-spacing);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  color: var(--color-ink);
+  font-weight: 300;
+  margin: 0 0 var(--space-base);
+}
+
+h1 { font: var(--type-display-lg); letter-spacing: var(--type-display-lg-spacing); }
+h2 { font: var(--type-display-md); letter-spacing: var(--type-display-md-spacing); }
+h3 { font: var(--type-display-sm); }
+
+a {
+  color: inherit;
+}
+
+/* Shared layout helpers */
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+/* Atmospheric gradient orb — the brand's only "color" moment.
+   Place behind content: <div className="orb" aria-hidden /> */
+.orb {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: var(--radius-full, 50%);
+  filter: blur(80px);
+  opacity: 0.55;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 30% 30%,
+    var(--color-gradient-mint),
+    var(--color-gradient-peach) 45%,
+    var(--color-gradient-lavender) 75%,
+    var(--color-gradient-sky)
+  );
+}

@@ -1,0 +1,130 @@
+/* Shared component styles — recipes from design/DESIGN.md */
+
+/* Buttons */
+.btn {
+  font: var(--type-button);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  height: var(--button-height);
+  padding: 10px 20px;
+  border: none;
+}
+
+.btn--primary:active {
+  background: var(--color-primary-active);
+}
+
+.btn--outline {
+  background: transparent;
+  color: var(--color-ink);
+  height: var(--button-height);
+  padding: 9px 19px;
+  border: 1px solid var(--color-hairline-strong);
+}
+
+.btn--outline:hover {
+  border-color: var(--color-ink);
+}
+
+.btn--text {
+  background: transparent;
+  color: var(--color-ink);
+  border: none;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* Form fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-base);
+}
+
+.field__label {
+  font: var(--type-caption);
+  color: var(--color-muted);
+}
+
+.input {
+  background: var(--color-surface-card);
+  color: var(--color-ink);
+  font: var(--type-body-md);
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-md);
+  height: var(--input-height);
+  padding: 12px 16px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-ink);
+}
+
+/* Cards */
+.card {
+  background: var(--color-surface-card);
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+}
+
+.card__heading {
+  font: var(--type-title-md);
+  margin-bottom: var(--space-sm);
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  background: var(--color-surface-strong);
+  color: var(--color-ink);
+  font: var(--type-caption-uppercase);
+  letter-spacing: var(--type-caption-uppercase-spacing);
+  text-transform: uppercase;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+}
+
+.badge--success {
+  background: var(--color-gradient-mint);
+}
+
+.badge--error {
+  background: var(--color-gradient-rose);
+}
+
+/* Top navigation */
+.top-nav {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-lg);
+  border-bottom: 1px solid var(--color-hairline);
+  position: relative;
+  z-index: 1;
+}
+
+.top-nav__brand {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-spacing);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.top-nav__links {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: center;
+  font: var(--type-nav-link);
+}
