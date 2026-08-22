@@ -13,6 +13,12 @@ export const swaggerSpec = {
         scheme: 'bearer',
         bearerFormat: 'JWT',
       },
+      refreshCookie: {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'dayflow_rt',
+        description: 'httpOnly refresh token cookie set by /api/auth/signin',
+      },
     },
   },
   paths: {
@@ -26,7 +32,10 @@ export const swaggerSpec = {
     },
     '/api/auth/signup': {
       post: {
-        summary: 'Register a new user',
+        summary: 'Register a new user (Employee or HR)',
+        description:
+          'Creates an unverified account and issues a one-time email verification token ' +
+          '(valid 24h). Without SMTP configured, the verification link is logged and returned outside production.',
         requestBody: {
           required: true,
           content: {
@@ -35,9 +44,13 @@ export const swaggerSpec = {
                 type: 'object',
                 required: ['employeeId', 'email', 'password', 'role'],
                 properties: {
-                  employeeId: { type: 'string' },
+                  employeeId: { type: 'string', example: 'EMP-0042' },
                   email: { type: 'string', format: 'email' },
-                  password: { type: 'string', minLength: 8 },
+                  password: {
+                    type: 'string',
+                    minLength: 8,
+                    description: 'Min 8 chars with upper, lower, digit and special character',
+                  },
                   role: { type: 'string', enum: ['EMPLOYEE', 'HR'] },
                 },
               },
@@ -45,14 +58,32 @@ export const swaggerSpec = {
           },
         },
         responses: {
-          201: { description: 'User created' },
-          400: { description: 'Invalid input' },
+          201: {
+            description: 'User created; verification required before signing in',
+          },
+          400: { description: 'Invalid input (password rules, email format)' },
+          409: { description: 'Email or Employee ID already registered' },
+        },
+      },
+    },
+    '/api/auth/verify-email': {
+      get: {
+        summary: 'Verify email with the one-time token',
+        parameters: [
+          { name: 'token', in: 'query', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          200: { description: 'Email verified; the user can now sign in' },
+          400: { description: 'Missing, invalid or expired token' },
         },
       },
     },
     '/api/auth/signin': {
       post: {
         summary: 'Sign in with email and password',
+        description:
+          'Returns a short-lived access token (JWT, 15 min) and sets the refresh token ' +
+          'as an httpOnly cookie (7 days, path /api/auth).',
         requestBody: {
           required: true,
           content: {
@@ -69,8 +100,40 @@ export const swaggerSpec = {
           },
         },
         responses: {
-          200: { description: 'Signed in, returns JWT' },
-          401: { description: 'Invalid credentials' },
+          200: { description: 'Signed in — accessToken in body, refresh token in httpOnly cookie' },
+          401: { description: 'Invalid email or password' },
+          403: { description: 'Email not verified' },
+        },
+      },
+    },
+    '/api/auth/refresh': {
+      post: {
+        summary: 'Exchange the refresh cookie for a new access token',
+        security: [{ refreshCookie: [] }],
+        description:
+          'Rotates the refresh token: the presented cookie is revoked and a new one is set.',
+        responses: {
+          200: { description: 'New accessToken; new refresh cookie set' },
+          401: { description: 'Missing, invalid or revoked refresh token' },
+        },
+      },
+    },
+    '/api/auth/signout': {
+      post: {
+        summary: 'Sign out — revoke the refresh token and clear the cookie',
+        security: [{ refreshCookie: [] }],
+        responses: {
+          200: { description: 'Signed out' },
+        },
+      },
+    },
+    '/api/auth/me': {
+      get: {
+        summary: 'Current user profile',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Authenticated user' },
+          401: { description: 'Missing, invalid or expired access token' },
         },
       },
     },
