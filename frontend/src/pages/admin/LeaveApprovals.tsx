@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
 import { useDelayedReady } from '../../hooks/useDelayedReady';
@@ -47,24 +49,34 @@ function formatDate(value: string) {
 
 export default function LeaveApprovals() {
   const ready = useDelayedReady();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(Number(searchParams.get('page') || 1), 1);
   const { toasts, push } = useToasts();
   const [leaves, setLeaves] = useState<LeaveRequest[] | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null);
   const [filter, setFilter] = useState<'ALL' | LeaveStatus>('ALL');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  async function load() {
+  async function load(p = page) {
     try {
-      setLeaves(await getAllLeaves());
+      const res = await getAllLeaves(filter === 'ALL' ? undefined : filter, p, 10);
+      if (Array.isArray(res)) {
+        setLeaves(res);
+        setPagination(null);
+      } else {
+        setLeaves(res.data);
+        setPagination({ total: res.total, pages: res.pages });
+      }
       setLoadError('');
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load');
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(page); }, [page, filter]);
 
   const pending = leaves?.filter((l) => l.status === 'PENDING').length ?? 0;
 
@@ -134,7 +146,10 @@ export default function LeaveApprovals() {
                   <Button
                     key={f.key}
                     variant={filter === f.key ? 'primary' : 'outline'}
-                    onClick={() => setFilter(f.key)}
+                    onClick={() => {
+                      setFilter(f.key);
+                      setSearchParams({});
+                    }}
                   >
                     {f.label}
                   </Button>
@@ -142,7 +157,7 @@ export default function LeaveApprovals() {
               </div>
             </div>
 
-            <Card className="bento__wide table-card" heading={`Requests (${visible.length})`}>
+            <Card className="bento__wide table-card" heading={`Requests (${pagination ? pagination.total : visible.length})`}>
               {visible.length > 0 ? (
                 <table className="table">
                   <thead>
@@ -248,6 +263,9 @@ export default function LeaveApprovals() {
                 </table>
               ) : (
                 <p className="dash-sub">Nothing here — all caught up ✓</p>
+              )}
+              {pagination && visible.length > 0 && (
+                <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />
               )}
               <p className="dash-sub" style={{ marginTop: 12 }}>Click a pending row to review it</p>
             </Card>

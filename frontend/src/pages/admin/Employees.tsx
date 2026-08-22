@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import Pagination from '../../components/common/Pagination';
 import { createEmployee, listEmployees } from '../../api/employees';
 import type { CreatedEmployee } from '../../api/employees';
 import type { Role, User } from '../../types';
@@ -37,6 +38,8 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 
 export default function EmployeeList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(Number(searchParams.get('page') || 1), 1);
   const { toasts, push } = useToasts();
   const [form, setForm] = useState<{ firstName: string; lastName: string; email: string; role: Role }>({
     firstName: '', lastName: '', email: '', role: 'EMPLOYEE',
@@ -46,12 +49,21 @@ export default function EmployeeList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [created, setCreated] = useState<CreatedEmployee | null>(null);
   const [employees, setEmployees] = useState<User[] | null>(null);
+  const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null);
 
   useEffect(() => {
-    listEmployees()
-      .then(setEmployees)
+    listEmployees(page, 10)
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setEmployees(res);
+          setPagination(null);
+        } else {
+          setEmployees(res.data);
+          setPagination({ total: res.total, pages: res.pages });
+        }
+      })
       .catch(() => setEmployees([]));
-  }, []);
+  }, [page]);
 
   function update(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -121,7 +133,7 @@ export default function EmployeeList() {
           </div>
         </div>
 
-        <Card className="table-card" heading={`All employees${employees ? ` (${employees.length})` : ''}`}>
+        <Card className="table-card" heading={`All employees${pagination ? ` (${pagination.total})` : employees ? ` (${employees.length})` : ''}`}>
           {employees === null ? (
             <div className="skeleton-card" style={{ border: 'none', background: 'transparent', padding: 0 }}>
               <div className="skeleton-line skeleton-line--wide" />
@@ -131,31 +143,36 @@ export default function EmployeeList() {
           ) : employees.length === 0 ? (
             <p className="dash-sub">No employees yet — create the first one with the button above.</p>
           ) : (
-            <table className="table">
-              <thead>
-                <tr><th>Employee ID</th><th>Name</th><th>Email</th><th>Role</th><th>Verified</th></tr>
-              </thead>
-              <tbody>
-                {employees.map(e => (
-                  <tr key={e.id}>
-                    <td className="table-mono">{e.employeeId}</td>
-                    <td>
-                      <span className="cell-name">
-                        <span className="avatar avatar--lavender">{initialsOf(e.name || e.email)}</span>
-                        {e.name || '—'}
-                      </span>
-                    </td>
-                    <td className="table-mono">{e.email}</td>
-                    <td>{e.role}</td>
-                    <td>
-                      <Badge tone={e.isVerified ? 'success' : 'neutral'}>
-                        {e.isVerified ? 'yes' : 'pending'}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              <table className="table">
+                <thead>
+                  <tr><th>Employee ID</th><th>Name</th><th>Email</th><th>Role</th><th>Verified</th></tr>
+                </thead>
+                <tbody>
+                  {employees.map(e => (
+                    <tr key={e.id}>
+                      <td className="table-mono">{e.employeeId}</td>
+                      <td>
+                        <span className="cell-name">
+                          <span className="avatar avatar--lavender">{initialsOf(e.name || e.email)}</span>
+                          {e.name || '—'}
+                        </span>
+                      </td>
+                      <td className="table-mono">{e.email}</td>
+                      <td>{e.role}</td>
+                      <td>
+                        <Badge tone={e.isVerified ? 'success' : 'neutral'}>
+                          {e.isVerified ? 'yes' : 'pending'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {pagination && (
+                <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />
+              )}
+            </>
           )}
         </Card>
       </div>

@@ -4,6 +4,7 @@ import Payroll from '../models/payroll.model.js';
 import User from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { notifyPayslipReady } from '../utils/mailer.js';
+import { parsePagination, paginatedResponse } from '../utils/pagination.js';
 
 function assertValidId(id) {
   if (!mongoose.isValidObjectId(id)) {
@@ -42,12 +43,21 @@ export async function getMyPayroll(req, res) {
   res.json(payroll);
 }
 
-// GET /api/payroll/all — every salary structure (HR/ADMIN), employee populated
-export async function getAllPayroll(_req, res) {
-  const records = await Payroll.find()
-    .populate('userId', 'employeeId email name role')
-    .sort({ updatedAt: -1 });
-  res.json(records);
+// GET /api/payroll/all — every salary structure (HR/ADMIN), employee populated (?page=&limit=)
+export async function getAllPayroll(req, res) {
+  const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+  if (!hasPagination) {
+    const records = await Payroll.find()
+      .populate('userId', 'employeeId email name role')
+      .sort({ updatedAt: -1 });
+    return res.json(records);
+  }
+  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 10 });
+  const [total, records] = await Promise.all([
+    Payroll.countDocuments(),
+    Payroll.find().populate('userId', 'employeeId email name role').sort({ updatedAt: -1 }).skip(skip).limit(limit),
+  ]);
+  res.json(paginatedResponse(records, total, page, limit));
 }
 
 // PATCH /api/payroll/:userId — HR/ADMIN update a salary structure (upsert),

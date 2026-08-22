@@ -5,6 +5,7 @@ import { createEmployeeSchema } from '../utils/validation.js';
 import { generateVerificationToken } from '../utils/tokens.js';
 import { nextEmployeeId } from '../utils/employeeId.js';
 import { generatePassword } from '../utils/password.js';
+import { parsePagination, paginatedResponse } from '../utils/pagination.js';
 
 const SALT_ROUNDS = 12;
 
@@ -80,10 +81,19 @@ export async function createEmployee(req, res, next) {
 }
 
 // GET /api/employees — list employees (HR/ADMIN)
-export async function listEmployees(_req, res, next) {
+export async function listEmployees(req, res, next) {
   try {
-    const employees = await User.find().select(USER_PUBLIC_FIELDS).sort({ employeeId: 1 });
-    res.json(employees);
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+    if (!hasPagination) {
+      const employees = await User.find().select(USER_PUBLIC_FIELDS).sort({ employeeId: 1 });
+      return res.json(employees);
+    }
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 10 });
+    const [total, employees] = await Promise.all([
+      User.countDocuments(),
+      User.find().select(USER_PUBLIC_FIELDS).sort({ employeeId: 1 }).skip(skip).limit(limit),
+    ]);
+    res.json(paginatedResponse(employees, total, page, limit));
   } catch (err) {
     next(err);
   }
