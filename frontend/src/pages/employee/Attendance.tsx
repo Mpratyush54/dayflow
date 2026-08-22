@@ -11,6 +11,7 @@ import { useToasts } from '../../hooks/useToasts';
 import { checkIn, checkOut, getMyAttendance } from '../../api/attendance';
 import type { AttendanceWindow } from '../../types';
 import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
+import { enqueue, flushQueue, getQueue } from '../../pwa';
 
 function todayKey() {
   const d = new Date();
@@ -80,7 +81,35 @@ export default function Attendance() {
       ? liveHoursFromCheckIn(today.checkIn, now)
       : 0;
 
+  // Flush any queued offline actions when back online
+  useEffect(() => {
+    const onOnline = async () => {
+      const q = getQueue();
+      if (q.length === 0) return;
+      try {
+        const n = await flushQueue(checkIn, checkOut);
+        if (n > 0) {
+          push(`Synced ${n} queued check-${q[0]?.type === 'checkin' ? 'in' : 'out'}${n > 1 ? 's' : ''}`);
+          await load(selectedDate);
+        }
+      } catch {
+        // keep remaining queue for next online event
+      }
+    };
+    window.addEventListener('online', onOnline);
+    // Also attempt flush on mount if already online and queue exists
+    if (navigator.onLine && getQueue().length > 0) void onOnline();
+    return () => window.removeEventListener('online', onOnline);
+  }, [load, selectedDate, push]);
+
   async function handleAction() {
+    const actionType = checkedIn ? 'checkout' : 'checkin';
+    // Offline: queue locally
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      enqueue({ type: actionType as 'checkin' | 'checkout', ts: Date.now() });
+      push('Queued offline');
+      return;
+    }
     setActing(true);
     try {
       const record = checkedIn ? await checkOut() : await checkIn();
@@ -91,7 +120,15 @@ export default function Attendance() {
       );
       await load(selectedDate);
     } catch (err) {
-      push(err instanceof Error ? err.message : 'Something went wrong');
+      // Network failure while online — also queue for retry
+      const msg = err instanceof Error ? err.message : '';
+      const isNetwork = /Failed to fetch|NetworkError|Load failed/i.test(msg);
+      if (isNetwork && typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueue({ type: actionType as 'checkin' | 'checkout', ts: Date.now() });
+        push('Queued offline');
+      } else {
+        push(err instanceof Error ? err.message : 'Something went wrong');
+      }
     } finally {
       setActing(false);
     }

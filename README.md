@@ -164,3 +164,19 @@ npm run dev            # http://localhost:5173
 
 - **Employee**: views own profile/attendance/salary, applies for leave, check-in/out.
 - **Admin / HR**: manages employees, reviews leave, views/updates payroll.
+
+## Setup — PWA offline queue & SSE
+
+### PWA offline check-in queue (employee)
+- **Queue key**: `localStorage["dayflow:attendance:queue"]` stores `{type: "checkin"|"checkout", ts: number}[]`.
+- **Offline detection**: `frontend/src/pages/employee/Attendance.tsx` checks `!navigator.onLine` before `checkIn`/`checkOut`. If offline, the action is enqueued and a toast `Queued offline` is shown.
+- **Sync on reconnect**: a `window.addEventListener('online', flush)` handler flushes the queue in order via `POST /api/attendance/checkin` / `checkout`, then reloads the 7-day window and shows `Synced N queued …`.
+- **Service worker**: `frontend/public/sw.js` is registered by `frontend/src/pwa.ts` (`registerSW()` called from `main.tsx`). It network-first caches navigations and intercepts `POST /attendance/checkin|checkout` when offline, returning `202 {queued:true}` so the UI does not hard-fail. The queue itself lives in `localStorage` (SW cannot access it), so the main-thread queue is the source of truth.
+- **Manual test**: open `/attendance`, go offline in DevTools (Offline checkbox), click Check in → toast `Queued offline` → go online → queue flushes.
+
+### SSE live presence (admin)
+- **Endpoint**: `GET /api/attendance/stream` (HR/ADMIN only, `text/event-stream`). Query param `?token=<accessToken>` is accepted because `EventSource` cannot set `Authorization` headers; `requireAuth` also checks `req.query.token`.
+- **Payload**: every 5 s (and immediately after any `checkin`/`checkout`) the server sends `data: {"stillIn": <number>}` where `stillIn` is `count({date: today, checkIn != null, checkOut == null})`.
+- **Frontend**: `frontend/src/pages/admin/Attendance.tsx` opens `new EventSource(getAttendanceStreamUrl())`, updates `liveStillIn` on `onmessage`, and renders `stillIn = liveStillIn ?? rows.filter(stillIn).length` in the Still in card/sparkline. Keep-alive comments `: keepalive` every 15 s prevent proxy buffering (`X-Accel-Buffering: no`).
+- **Fallback**: if `EventSource` is unavailable or `onerror` fires (401/ network), the stream is closed and the page falls back to polling `GET /api/attendance/team` every 5 s. Historical dates (`date !== today`) skip SSE entirely.
+- **Docs**: Swagger spec in `backend/src/docs/swagger.js` documents `/api/attendance/stream`.
