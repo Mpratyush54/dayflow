@@ -20,9 +20,8 @@ export function verifyAccessToken(token) {
 // is stored in the DB, so the token can be rotated and revoked.
 export function signRefreshToken(user) {
   const jti = crypto.randomBytes(32).toString('hex');
-  const token = jwt.sign({}, env.jwtRefreshSecret, {
+  const token = jwt.sign({ jti }, env.jwtRefreshSecret, {
     subject: user._id.toString(),
-    jti,
     expiresIn: `${env.refreshExpiresDays}d`,
   });
   return { token, jti, expiresAt: new Date(Date.now() + env.refreshExpiresDays * 86400000) };

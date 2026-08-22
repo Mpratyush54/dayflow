@@ -26,6 +26,7 @@ export interface User {
   phone?: string;
   address?: string;
   profilePicture?: string;
+  isVerified?: boolean;
 }
 
 export interface EmployeeProfile extends User {

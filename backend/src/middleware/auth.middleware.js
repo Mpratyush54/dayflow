@@ -1,9 +1,9 @@
 import User from '../models/user.model.js';
-import { env } from '../config/env.js';
 import { HttpError } from '../utils/httpError.js';
 import { verifyAccessToken } from '../utils/tokens.js';
 
 // Verifies the Bearer access token and loads the fresh user onto req.user
+// (a Mongoose document: req.user.id and req.user.role are available).
 export async function requireAuth(req, _res, next) {
   try {
     const header = req.headers.authorization;
@@ -40,7 +40,9 @@ export function requireRole(...roles) {
       return next(new HttpError(401, 'Authentication required', 'NO_TOKEN'));
     }
     if (!roles.includes(req.user.role)) {
-      return next(new HttpError(403, 'You do not have permission to access this resource', 'FORBIDDEN'));
+      return next(
+        new HttpError(403, 'You do not have permission to access this resource', 'FORBIDDEN'),
+      );
     }
     next();
   };

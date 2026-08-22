@@ -11,24 +11,43 @@
   margin: 0 0 var(--space-sm);
 }
 
+.form-success {
+  font: var(--type-body-sm);
+  color: var(--color-success);
+  margin: 0 0 var(--space-sm);
+}
+
 .btn--block {
   width: 100%;
 }
 
-/* Dev-only bypass link under the auth pages — remove when auth lands */
-.dev-bypass {
-  font: var(--type-caption);
-  color: var(--color-muted);
-  text-align: center;
-  margin: var(--space-base) 0;
+/* Sign-up: live password security rules */
+.pw-rules {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xxs) var(--space-sm);
+  margin: 0 0 var(--space-sm);
+  padding: 0;
 }
 
-.dev-bypass__link {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: var(--color-ink);
-  text-decoration: underline;
-  cursor: pointer;
+.pw-rules__item {
+  font: var(--type-caption);
+  color: var(--color-muted);
+  padding-left: var(--space-sm);
+  position: relative;
+}
+
+.pw-rules__item::before {
+  content: '○';
+  position: absolute;
+  left: 0;
+}
+
+.pw-rules__item.is-ok {
+  color: var(--color-success);
+}
+
+.pw-rules__item.is-ok::before {
+  content: '●';
 }
