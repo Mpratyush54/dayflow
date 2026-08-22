@@ -307,28 +307,37 @@ textarea.input {
   }
 }
 
-/* Dialog / modal */
+/* Dialog / modal — portaled to body; scrollable when taller than viewport */
 .dialog-backdrop {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-lg);
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 100%;
+  padding: max(var(--space-lg), env(safe-area-inset-top, 0px)) var(--space-lg)
+    max(var(--space-lg), env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(12, 10, 9, 0.4);
   backdrop-filter: blur(2px);
+  animation: fade-in 0.15s ease both;
 }
 
 .dialog {
-  width: 100%;
-  max-width: 420px;
+  width: min(420px, 100%);
+  max-height: min(90dvh, calc(100dvh - 2 * var(--space-lg)));
+  margin: auto;
+  display: flex;
+  flex-direction: column;
   background: var(--color-surface-card);
   border: 1px solid var(--color-hairline-soft);
   border-radius: var(--radius-xl);
   padding: var(--space-lg);
   position: relative;
   z-index: 1;
+  box-shadow: 0 24px 80px rgba(12, 10, 9, 0.2);
 }
 
 .dialog__head {
@@ -337,6 +346,7 @@ textarea.input {
   justify-content: space-between;
   gap: var(--space-sm);
   margin-bottom: var(--space-base);
+  flex-shrink: 0;
 }
 
 .dialog__title {
@@ -363,6 +373,10 @@ textarea.input {
 .dialog__body {
   font: var(--type-body-md);
   color: var(--color-body);
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Notification center */

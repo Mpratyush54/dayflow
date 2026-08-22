@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface DialogProps {
@@ -23,9 +24,18 @@ export default function Dialog({ open, onClose, title, children }: DialogProps) 
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="dialog-backdrop" onClick={onClose} role="presentation">
       <div
         ref={panelRef}
@@ -44,6 +54,7 @@ export default function Dialog({ open, onClose, title, children }: DialogProps) 
         </div>
         <div className="dialog__body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
