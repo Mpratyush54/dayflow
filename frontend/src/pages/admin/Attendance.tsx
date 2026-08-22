@@ -304,11 +304,11 @@ export default function AttendanceOverview() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 'var(--space-md)', display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="list-search-bar">
               <Input
                 label="Search employees"
                 type="search"
-                placeholder="Search employees..."
+                placeholder="Name, email or employee ID"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="list-search-input"
@@ -316,7 +316,7 @@ export default function AttendanceOverview() {
               {searchQ && (
                 <Button variant="outline" onClick={() => setSearchInput('')}>Clear</Button>
               )}
-              <span className="dash-sub" style={{ color: 'var(--color-muted)' }}>{filteredRows.length} employees</span>
+              <span className="dash-sub list-search-bar__meta">{filteredRows.length} employee{filteredRows.length === 1 ? '' : 's'}</span>
             </div>
 
             <div className="bento">

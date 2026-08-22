@@ -185,14 +185,6 @@ export default function LeaveApprovals() {
                 <h1>Leave <span className="text-gradient">approvals</span></h1>
               </div>
               <div className="hero-actions">
-                <Input
-                  label="Search"
-                  type="search"
-                  placeholder="Employee name or ID"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="list-search-input"
-                />
                 {FILTERS.map((f) => (
                   <Button
                     key={f.key}
@@ -208,6 +200,23 @@ export default function LeaveApprovals() {
                   </Button>
                 ))}
               </div>
+            </div>
+
+            <div className="list-search-bar">
+              <Input
+                label="Search leave requests"
+                type="search"
+                placeholder="Employee name, email or ID"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="list-search-input"
+              />
+              {searchQ && (
+                <Button variant="outline" onClick={() => setSearchInput('')}>Clear</Button>
+              )}
+              {pagination && (
+                <span className="dash-sub list-search-bar__meta">{pagination.total} request{pagination.total === 1 ? '' : 's'}</span>
+              )}
             </div>
 
             <Card className="bento__wide table-card" heading={`Requests (${pagination ? pagination.total : visible.length})`}>
@@ -325,7 +334,16 @@ export default function LeaveApprovals() {
                     })}
                   </tbody>
                 </table>
-              ) : (
+              ) : searchQ ? (
+                <div className="empty-state empty-state--card animate-in" role="status" aria-live="polite">
+                  <div className="empty-state__illustration" aria-hidden>🔍</div>
+                  <h3 className="empty-state__title">No matches</h3>
+                  <p className="empty-state__desc">No leave requests matching &ldquo;{searchQ}&rdquo;. Try a different name, email, or employee ID.</p>
+                  <div className="empty-state__actions">
+                    <Button variant="outline" onClick={() => setSearchInput('')}>Clear search</Button>
+                  </div>
+                </div>
+              ) : filter === 'PENDING' ? (
                 <div className="empty-state empty-state--card animate-in" role="status" aria-live="polite" aria-label="All caught up">
                   <div className="empty-state__illustration" aria-hidden>✓</div>
                   <h3 className="empty-state__title">All caught up ✓</h3>
@@ -333,6 +351,15 @@ export default function LeaveApprovals() {
                   <div className="empty-state__actions">
                     <Button variant="outline" onClick={() => setFilter('ALL')}>View all requests</Button>
                     <Button variant="outline" onClick={() => setFilter('PENDING')}>Check pending again</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state empty-state--card animate-in" role="status" aria-live="polite">
+                  <div className="empty-state__illustration" aria-hidden>📋</div>
+                  <h3 className="empty-state__title">No leave requests</h3>
+                  <p className="empty-state__desc">No requests match the current filter. Try &ldquo;All&rdquo; or a different status.</p>
+                  <div className="empty-state__actions">
+                    <Button variant="outline" onClick={() => setFilter('ALL')}>View all requests</Button>
                   </div>
                 </div>
               )}

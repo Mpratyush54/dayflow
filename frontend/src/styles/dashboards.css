@@ -1207,6 +1207,19 @@
   border: 0;
 }
 
+.list-search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.list-search-bar__meta {
+  color: var(--color-muted);
+  margin-left: auto;
+}
+
 .payroll-editor {
   display: flex;
   flex-direction: column;
