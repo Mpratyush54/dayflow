@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
@@ -10,39 +10,63 @@ import AreaChart from '../../components/charts/AreaChart';
 import Heatmap from '../../components/charts/Heatmap';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
-import { useCountUp } from '../../hooks/useCountUp';
-import { useDelayedReady } from '../../hooks/useDelayedReady';
+import { useAuth } from '../../hooks/useAuth';
+import { checkIn, checkOut, getMyAttendance } from '../../api/attendance';
+import { getMyLeaves } from '../../api/leaves';
+import { getMyPayroll } from '../../api/payroll';
+import type { AttendanceDay, AttendanceWindow, LeaveRequest, Payroll } from '../../types';
 
-const hoursWeek = [7.5, 8, 4, 8.5, 0, 0, 0];
-const weekLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+type Data = {
+  attendance: AttendanceWindow | null;
+  leaves: LeaveRequest[] | null;
+  payroll: Payroll | null;
+};
 
-const month = Array.from({ length: 30 }, (_, i) => ({
-  date: i + 1,
-  level: ([3, 2, 3, 3, 0, 1, 1, 3, 2, 3, 3, 1, 0, 0, 2, 3, 3, 3, 2, 1, 1, 3, 3, 2, 3, 3, 0, 1, 2, 3][i] as 0 | 1 | 2 | 3),
-}));
+function money(amount: number, currency = 'INR') {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
+}
 
-const balances = [
-  { label: 'Paid leave', used: 6, total: 18, tone: 'mint' },
-  { label: 'Sick leave', used: 2, total: 10, tone: 'peach' },
-  { label: 'Unpaid leave', used: 0, total: 5, tone: 'lavender' },
-];
+function netPay(p: Payroll) {
+  const allow = Object.values(p.allowances ?? {}).reduce((s, v) => s + v, 0);
+  const deduct = Object.values(p.deductions ?? {}).reduce((s, v) => s + v, 0);
+  return (p.basicSalary ?? 0) + allow - deduct;
+}
 
-const activity = [
-  { text: 'Leave request (Sick, Aug 24–25) submitted', when: '2h ago' },
-  { text: 'Checked in at 9:02 AM', when: 'Today' },
-  { text: 'Payslip for July is available', when: 'Aug 1' },
-];
+function daysToPayday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+}
+
+function daysInMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+}
+
+function heatmapLevel(d: AttendanceDay): 0 | 1 | 2 | 3 {
+  if (d.status === 'PRESENT') return 3;
+  if (d.status === 'HALF_DAY') return 2;
+  const dow = new Date(`${d.date}T00:00:00`).getDay();
+  return dow === 0 || dow === 6 ? 1 : 0;
+}
+
+function computeStreak(days: AttendanceDay[] | undefined) {
+  if (!days || days.length === 0) return 0;
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    const d = days[i];
+    if (d.status === 'PRESENT' || d.status === 'HALF_DAY') streak++;
+    else if (i === days.length - 1) continue; // today is still open
+    else break;
+  }
+  return streak;
+}
 
 function Skeletons() {
   return (
     <div className="bento">
-      <div className="skeleton-card bento__hero">
-        <div className="skeleton-line skeleton-line--title" />
-        <div className="skeleton-line skeleton-line--wide" />
-        <div className="skeleton-line" />
-      </div>
-      <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
-      <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
+      <div className="skeleton-card bento__hero"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
+      <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line" /></div>
+      <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line" /></div>
       <div className="skeleton-card bento__wide"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
       <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line" /></div>
     </div>
@@ -51,27 +75,76 @@ function Skeletons() {
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [now, setNow] = useState(() => new Date());
-  const attendance = useCountUp(92, 900, 200);
-  const ready = useDelayedReady();
+  const { user } = useAuth();
   const { toasts, push } = useToasts();
+  const [now, setNow] = useState(() => new Date());
+  const [data, setData] = useState<Data>({ attendance: null, leaves: null, payroll: null });
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const refresh = useCallback(async () => {
+    const [attendance, leaves, payroll] = await Promise.all([
+      getMyAttendance(31).catch(() => null),
+      getMyLeaves().catch(() => null),
+      getMyPayroll().catch(() => null), // 404 until HR sets a structure
+    ]);
+    setData({ attendance, leaves, payroll });
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      await refresh();
+      void alive;
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [refresh]);
+
+  const firstName = (user?.name ?? user?.email ?? 'there').split(/\s+/)[0];
+  const today = data.attendance?.days[data.attendance.days.length - 1];
+  const week = data.attendance?.days.slice(-7) ?? [];
+  const hours = week.map(d => d.workedHours ?? 0);
+  const streak = computeStreak(data.attendance?.days);
+  const pendingLeaves = data.leaves?.filter(l => l.status === 'PENDING').length ?? 0;
+  const recentLeaves = data.leaves?.slice(0, 3) ?? [];
+  const loading = data.attendance === null;
+
+  async function handleCheckInOut() {
+    if (!today || busy) return;
+    setBusy(true);
+    try {
+      if (today.checkIn && !today.checkOut) {
+        await checkOut();
+        push('Checked out — see you tomorrow');
+      } else if (!today.checkIn) {
+        await checkIn();
+        push('Checked in at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      }
+      await refresh();
+    } catch (err) {
+      push(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const checkedIn = Boolean(today?.checkIn);
+  const checkedOut = Boolean(today?.checkOut);
 
   return (
     <Sidebar
-      user={{ name: 'Pratyush M.', role: 'Employee · EMP-0042', initials: 'PM' }}
+      user={{ name: firstName, role: 'Employee', initials: '?' }}
       items={[
         { to: '/dashboard', label: 'Dashboard', icon: '◧', end: true },
         { to: '/profile', label: 'Profile', icon: '👤' },
         { to: '/attendance', label: 'Attendance', icon: '🗓' },
-        { to: '/leaves', label: 'Leave', icon: '🌴' },
+        { to: '/leaves', label: 'Leave', icon: '🌴', badge: pendingLeaves > 0 ? String(pendingLeaves) : undefined },
         { to: '/payslip', label: 'Payslip', icon: '💵' },
       ]}
       commands={[
@@ -80,47 +153,67 @@ export default function EmployeeDashboard() {
         { label: 'Attendance', hint: 'page', to: '/attendance' },
         { label: 'Apply for leave', hint: 'action', to: '/leaves' },
         { label: 'View payslip', hint: 'action', to: '/payslip' },
-        { label: 'Admin view', hint: 'demo', to: '/admin' },
       ]}
     >
       <div className="container page">
         <div className="orb page__orb" aria-hidden />
         <ToastStack toasts={toasts} />
 
-        {!ready ? <Skeletons /> : (<>
         <div className="dash-head">
           <div>
-            <p className="dash-sub">{now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · {time}</p>
-            <h1>Good morning,<br /><span className="text-gradient">Pratyush</span></h1>
+            <p className="dash-sub">
+              {now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+              {' · '}
+              {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </p>
+            <h1>Good {now.getHours() < 12 ? 'morning' : now.getHours() < 17 ? 'afternoon' : 'evening'},<br /><span className="text-gradient">{firstName}</span></h1>
           </div>
           <div className="hero-actions">
-            <span className="streak">🔥 12-day streak</span>
-            <Badge tone={checkedIn ? 'success' : 'neutral'}>{checkedIn ? 'Checked in' : 'Not checked in'}</Badge>
+            {streak > 1 && <span className="streak">🔥 {streak}-day streak</span>}
+            <Badge tone={checkedIn && !checkedOut ? 'success' : 'neutral'}>
+              {checkedOut ? 'Day complete' : checkedIn ? 'Checked in' : 'Not checked in'}
+            </Badge>
             <Button
-              variant={checkedIn ? 'outline' : 'primary'}
-              onClick={() => {
-                setCheckedIn(!checkedIn);
-                push(checkedIn ? 'Checked out — see you tomorrow' : 'Checked in at ' + time);
-              }}
+              variant={checkedIn && !checkedOut ? 'outline' : 'primary'}
+              onClick={handleCheckInOut}
+              disabled={busy || loading || checkedOut}
             >
-              {checkedIn ? 'Check out' : 'Check in'}
+              {busy ? '…' : checkedOut ? 'Done for today' : checkedIn ? 'Check out' : 'Check in'}
             </Button>
           </div>
         </div>
 
+        {loading ? <Skeletons /> : (<>
         <div className="bento">
           <Card className="bento__hero card--grad" heading="Hours this week">
-            <div className="art" style={{ marginBottom: 16 }} aria-hidden />
-            <AreaChart id="hours" points={hoursWeek} labels={weekLabels} suffix="h" height={200} />
-            <p className="dash-sub">28h logged · 4h more than last week <span className="stat-delta">↑ 17%</span></p>
+            {hours.some(h => h > 0) ? (
+              <>
+                <AreaChart id="hours" points={hours} labels={week.map(d => d.weekday)} suffix="h" height={200} />
+                <p className="dash-sub">
+                  {data.attendance!.summary.hours}h logged in the last 31 days · {data.attendance!.summary.present} present · {data.attendance!.summary.halfDay} half-days
+                </p>
+              </>
+            ) : (
+              <div className="empty-state">
+                <p className="empty-state__title">No hours logged yet</p>
+                <p className="dash-sub">Check in with the button above and your week fills in here.</p>
+              </div>
+            )}
           </Card>
 
           <Card className="bento__tall card--tint-mint">
-            <Donut value={92} label="Attendance · August" sublabel={`${attendance}% present`} />
+            {data.attendance!.summary.rate !== null ? (
+              <Donut value={data.attendance!.summary.rate} label="Attendance · last 31 days" sublabel={`${data.attendance!.summary.present + data.attendance!.summary.halfDay}/${data.attendance!.summary.workdays} workdays`} />
+            ) : (
+              <div className="empty-state">
+                <p className="empty-state__title">No workdays yet</p>
+                <p className="dash-sub">Your attendance rate appears after your first check-in.</p>
+              </div>
+            )}
           </Card>
 
-          <Card className="bento__mid card--tint-lavender" heading="August at a glance">
-            <Heatmap days={month} />
+          <Card className="bento__mid card--tint-lavender" heading="This month">
+            <Heatmap days={(data.attendance?.days ?? []).map(d => ({ date: Number(d.date.slice(-2)), level: heatmapLevel(d) }))} />
             <div className="heatmap-legend">
               <span>less</span>
               <span className="heatmap__cell heatmap__cell--1" />
@@ -131,61 +224,87 @@ export default function EmployeeDashboard() {
           </Card>
 
           <Card className="bento__mid card--dark">
-            {/* TODO(#11): wire net pay + breakdown to GET /api/payroll instead of these figures */}
             <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-              <CountdownRing days={10} total={31} label="to payday" />
+              <CountdownRing days={daysToPayday()} total={daysInMonth()} label="to payday" />
               <div>
-                <span className="stat-xl">₹61.3k</span>
-                <p className="dash-sub" style={{ color: 'var(--color-on-dark-soft)', marginTop: 6 }}>Net pay · August</p>
+                <span className="stat-xl">{data.payroll ? money(netPay(data.payroll), data.payroll.currency) : '—'}</span>
+                <p className="dash-sub" style={{ color: 'var(--color-on-dark-soft)', marginTop: 6 }}>Net pay · this month</p>
               </div>
             </div>
             <div className="summary-row" style={{ marginTop: 16 }}>
-              <span className="summary-row__label">Basic + allowances</span>
-              <span className="summary-row__value">₹ 67,400</span>
+              <span className="summary-row__label">Basic</span>
+              <span className="summary-row__value">{data.payroll ? money(data.payroll.basicSalary, data.payroll.currency) : '—'}</span>
             </div>
             <div className="summary-row">
-              <span className="summary-row__label">Deductions</span>
-              <span className="summary-row__value">₹ 6,100</span>
+              <span className="summary-row__label">Allowances − deductions</span>
+              <span className="summary-row__value">
+                {data.payroll
+                  ? `${money(Object.values(data.payroll.allowances ?? {}).reduce((s, v) => s + v, 0), data.payroll.currency)} − ${money(Object.values(data.payroll.deductions ?? {}).reduce((s, v) => s + v, 0), data.payroll.currency)}`
+                  : '—'}
+              </span>
             </div>
+            {!data.payroll && (
+              <p className="dash-sub" style={{ color: 'var(--color-on-dark-soft)' }}>
+                HR hasn&apos;t set your salary structure yet.
+              </p>
+            )}
           </Card>
 
-          <Card className="bento__mid card--tint-peach" heading="Leave balance">
-            {balances.map((b) => (
-              <div key={b.label} className="balance-row">
-                <div className="balance-top">
-                  <span>{b.label}</span>
-                  <span>{b.total - b.used} of {b.total} left</span>
-                </div>
-                <div className="balance-track">
-                  <div
-                    className={`balance-fill balance-fill--${b.tone}`}
-                    style={{ width: `${((b.total - b.used) / b.total) * 100}%`, animationDelay: '0.2s' }}
-                  />
-                </div>
+          <Card className="bento__mid card--tint-peach" heading="Leave">
+            {data.leaves === null ? (
+              <p className="dash-sub">Could not load your leave requests.</p>
+            ) : data.leaves.length === 0 ? (
+              <div className="empty-state">
+                <p className="empty-state__title">No leave requests</p>
+                <p className="dash-sub">Apply for time off and track it here.</p>
+                <Button variant="outline" onClick={() => navigate('/leaves')}>Apply for leave</Button>
               </div>
-            ))}
+            ) : (
+              <ul className="leave-list">
+                {recentLeaves.map(l => (
+                  <li key={l.id} className="leave-row">
+                    <span>
+                      <span className="leave-who">{l.type}</span>
+                      <span className="leave-detail" style={{ display: 'block' }}>
+                        {new Date(l.startDate).toLocaleDateString()} → {new Date(l.endDate).toLocaleDateString()}
+                      </span>
+                    </span>
+                    <Badge tone={l.status === 'APPROVED' ? 'success' : l.status === 'REJECTED' ? 'error' : 'neutral'}>
+                      {l.status.toLowerCase()}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="dash-sub" style={{ marginTop: 12 }}>
+              <Link to="/leaves">View all →</Link>
+            </p>
           </Card>
 
           <Card className="bento__wide" heading="Recent activity">
             <ul className="activity-list">
-              {activity.map((a) => (
-                <li key={a.text}>
-                  <span>{a.text}</span>
-                  <span className="activity-when">{a.when}</span>
+              {(data.leaves ?? []).slice(0, 4).map(l => (
+                <li key={`a-${l.id}`}>
+                  <span>
+                    {l.status === 'PENDING'
+                      ? `Leave request (${l.type}) submitted`
+                      : `Leave request (${l.type}) ${l.status.toLowerCase()}`}
+                    {l.reviewerComment ? ` — “${l.reviewerComment}”` : ''}
+                  </span>
+                  <span className="activity-when">{new Date(l.startDate).toLocaleDateString()}</span>
                 </li>
               ))}
+              {(data.attendance?.days ?? []).slice(-5).reverse().filter(d => d.checkIn).slice(0, 3).map(d => (
+                <li key={`b-${d.date}`}>
+                  <span>Checked in at {new Date(d.checkIn!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} on {d.weekday}</span>
+                  <span className="activity-when">{d.date.slice(5)}</span>
+                </li>
+              ))}
+              {(!data.leaves || data.leaves.length === 0) && !(data.attendance?.days.some(d => d.checkIn)) && (
+                <li><span>Your check-ins and leave activity will show up here.</span></li>
+              )}
             </ul>
           </Card>
-        </div>
-
-        <div className="cta-band">
-          {/* TODO(#11): payslip figures from GET /api/payroll */}
-          <div className="orb" aria-hidden />
-          <div className="cta-band__text">
-            <h3 className="cta-band__title">Your July payslip is ready</h3>
-            <p className="cta-band__sub">Net pay ₹ 61,300 · credited Aug 1</p>
-          </div>
-          <Button variant="outline" onClick={() => navigate('/payslip')}>View payslip</Button>
         </div>
         </>)}
       </div>
