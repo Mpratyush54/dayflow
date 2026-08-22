@@ -9,11 +9,18 @@ export const passwordSchema = z
   .regex(/[0-9]/, 'Password must include a number')
   .regex(/[^A-Za-z0-9]/, 'Password must include a special character');
 
-export const signupSchema = z.object({
-  employeeId: z.string().trim().min(2, 'Employee ID must be at least 2 characters').max(20, 'Employee ID must be at most 20 characters'),
+// HR/Admin creating an employee — the employeeId and initial password are
+// generated server-side, never supplied by the client.
+export const createEmployeeSchema = z.object({
+  firstName: z.string().trim().min(1, 'First name is required').max(50),
+  lastName: z.string().trim().min(1, 'Last name is required').max(50),
   email: z.email('Invalid email address').transform((v) => v.toLowerCase()),
-  password: passwordSchema,
-  role: z.enum(['EMPLOYEE', 'HR']),
+  role: z.enum(['EMPLOYEE', 'HR', 'ADMIN']).default('EMPLOYEE'),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: passwordSchema,
 });
 
 export const signinSchema = z.object({

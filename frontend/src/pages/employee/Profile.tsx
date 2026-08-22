@@ -7,7 +7,7 @@ import Badge from '../../components/common/Badge';
 import { getEmployee, updateEmployee } from '../../api/employees';
 import type { EmployeePatch } from '../../api/employees';
 import type { EmployeeProfile } from '../../types';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import './Profile.css';
 
 const MAX_IMAGE_BYTES = 1024 * 1024;

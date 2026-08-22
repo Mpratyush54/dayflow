@@ -55,10 +55,10 @@ export default function AdminDashboard() {
     <Sidebar
       user={{ name: 'Meera T.', role: 'HR · Admin', initials: 'MT' }}
       items={[
-        { to: '/admin', label: 'Overview', icon: '◧' },
+        { to: '/admin', label: 'Overview', icon: '◧', end: true },
         { to: '/admin/employees', label: 'Employees', icon: '👥' },
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
-        { to: '/admin/approvals', label: 'Approvals', icon: '✓', badge: '2' },
+        { to: '/admin/approvals', label: 'Approvals', icon: '✓' },
         { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
       ]}
       commands={[

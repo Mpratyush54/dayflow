@@ -20,6 +20,7 @@ export function verifyAccessToken(token) {
 // is stored in the DB, so the token can be rotated and revoked.
 export function signRefreshToken(user) {
   const jti = crypto.randomBytes(32).toString('hex');
+  // jsonwebtoken v9 requires jti in the payload, not the options bag
   const token = jwt.sign({ jti }, env.jwtRefreshSecret, {
     subject: user._id.toString(),
     expiresIn: `${env.refreshExpiresDays}d`,

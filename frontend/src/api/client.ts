@@ -13,23 +13,11 @@ export class ApiError extends Error {
   }
 }
 
-export interface SignUpPayload {
-  employeeId: string;
-  email: string;
-  password: string;
-  role: 'EMPLOYEE' | 'HR';
-}
-
-export interface SignUpResponse {
-  message: string;
-  user: User;
-  /** Dev-only: returned while no SMTP is configured, so verification is testable */
-  verificationUrl?: string;
-}
-
 export interface SignInResponse {
   accessToken: string;
   user: User;
+  /** True when the account still uses the HR-issued one-time password */
+  mustChangePassword?: boolean;
 }
 
 // The access token lives only in memory; the 7-day refresh token is an
@@ -105,10 +93,12 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
+// There is no public sign-up: HR/Admin create accounts via POST /api/employees
 export const authApi = {
-  signUp: (payload: SignUpPayload) => api.post<SignUpResponse>('/auth/signup', payload),
   signIn: (payload: { email: string; password: string }) =>
     api.post<SignInResponse>('/auth/signin', payload),
   signOut: () => api.post<{ message: string }>('/auth/signout'),
   me: () => api.get<{ user: User }>('/auth/me'),
+  changePassword: (payload: { currentPassword: string; newPassword: string }) =>
+    api.post<{ message: string }>('/auth/change-password', payload),
 };
