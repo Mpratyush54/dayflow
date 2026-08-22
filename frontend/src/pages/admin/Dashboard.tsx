@@ -16,6 +16,16 @@ const pendingLeaves = [
   { id: 'LV-105', who: 'Rohan S. · EMP-0051', detail: 'Paid · Aug 28', initials: 'RS', tone: 'lavender' },
 ];
 
+const attendanceWeek = [
+  { day: 'Mon', present: 4 },
+  { day: 'Tue', present: 4 },
+  { day: 'Wed', present: 3 },
+  { day: 'Thu', present: 4 },
+  { day: 'Fri', present: 3 },
+  { day: 'Sat', present: 2 },
+  { day: 'Sun', present: 0 },
+];
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   return (
@@ -101,6 +111,45 @@ export default function AdminDashboard() {
           </ul>
           <p className="dash-sub" style={{ marginTop: 16 }}>2 pending · 14 approved this month</p>
         </Card>
+      </div>
+
+      <div className="dash-grid">
+        <Card heading="Attendance this week">
+          <div className="bar-chart">
+            {attendanceWeek.map((d) => (
+              <div key={d.day} className="bar-col">
+                <span className="bar-value">{d.present}</span>
+                <div className="bar" style={{ height: `${(d.present / 4) * 100}%` }} />
+                <span className="bar-label">{d.day}</span>
+              </div>
+            ))}
+          </div>
+          <p className="dash-sub" style={{ marginTop: 16 }}>Employees present per day · Aug 17 – 23</p>
+        </Card>
+        <Card className="card--dark" heading="Payroll summary">
+          <div className="summary-row">
+            <span className="summary-row__label">Total payroll (Aug)</span>
+            <span className="summary-row__value">₹ 12,40,000</span>
+          </div>
+          <div className="summary-row">
+            <span className="summary-row__label">Employees processed</span>
+            <span className="summary-row__value">3 / 4</span>
+          </div>
+          <div className="summary-row">
+            <span className="summary-row__label">Next payroll run</span>
+            <span className="summary-row__value">Sep 1</span>
+          </div>
+          <Button variant="outline" style={{ marginTop: 16 }}>Manage payroll</Button>
+        </Card>
+      </div>
+
+      <div className="cta-band">
+        <div className="orb" aria-hidden />
+        <div className="cta-band__text">
+          <h3 className="cta-band__title">August payroll is almost ready</h3>
+          <p className="cta-band__sub">3 of 4 salary structures reviewed · 1 pending update</p>
+        </div>
+        <Button>Review payroll</Button>
       </div>
     </AppLayout>
   );

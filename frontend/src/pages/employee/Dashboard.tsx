@@ -19,6 +19,12 @@ const activity = [
   { text: 'Payslip for July is available', when: 'Aug 1' },
 ];
 
+const balances = [
+  { label: 'Paid leave', used: 6, total: 18, tone: 'mint' },
+  { label: 'Sick leave', used: 2, total: 10, tone: 'peach' },
+  { label: 'Unpaid leave', used: 0, total: 5, tone: 'lavender' },
+];
+
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
   const [checkedIn, setCheckedIn] = useState(false);
@@ -109,6 +115,52 @@ export default function EmployeeDashboard() {
             ))}
           </ul>
         </Card>
+      </div>
+
+      <div className="dash-grid">
+        <Card heading="Leave balance">
+          {balances.map((b) => (
+            <div key={b.label} className="balance-row">
+              <div className="balance-top">
+                <span>{b.label}</span>
+                <span>{b.total - b.used} of {b.total} left</span>
+              </div>
+              <div className="balance-track">
+                <div
+                  className={`balance-fill balance-fill--${b.tone}`}
+                  style={{ width: `${(b.total - b.used) / b.total * 100}%`, animationDelay: '0.2s' }}
+                />
+              </div>
+            </div>
+          ))}
+        </Card>
+        <Card className="card--dark" heading="Salary (August)">
+          <div className="summary-row">
+            <span className="summary-row__label">Basic</span>
+            <span className="summary-row__value">₹ 55,000</span>
+          </div>
+          <div className="summary-row">
+            <span className="summary-row__label">Allowances</span>
+            <span className="summary-row__value">₹ 12,400</span>
+          </div>
+          <div className="summary-row">
+            <span className="summary-row__label">Deductions</span>
+            <span className="summary-row__value">₹ 6,100</span>
+          </div>
+          <div className="summary-row">
+            <span className="summary-row__label">Net pay</span>
+            <span className="summary-row__value">₹ 61,300</span>
+          </div>
+        </Card>
+      </div>
+
+      <div className="cta-band">
+        <div className="orb" aria-hidden />
+        <div className="cta-band__text">
+          <h3 className="cta-band__title">Your July payslip is ready</h3>
+          <p className="cta-band__sub">Net pay ₹ 61,300 · credited Aug 1</p>
+        </div>
+        <Button variant="outline">View payslip</Button>
       </div>
     </AppLayout>
   );

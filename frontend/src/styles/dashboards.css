@@ -330,6 +330,185 @@
   gap: var(--space-xs);
 }
 
+/* Attendance bar chart */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  height: 160px;
+  padding-top: var(--space-sm);
+}
+
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar {
+  width: 100%;
+  max-width: 42px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--color-gradient-lavender);
+  transform-origin: bottom;
+  animation: bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bar-col:nth-child(2) .bar { background: var(--color-gradient-mint); animation-delay: 0.05s; }
+.bar-col:nth-child(3) .bar { animation-delay: 0.1s; }
+.bar-col:nth-child(4) .bar { background: var(--color-gradient-mint); animation-delay: 0.15s; }
+.bar-col:nth-child(5) .bar { animation-delay: 0.2s; }
+.bar-col:nth-child(6) .bar { background: var(--color-gradient-mint); animation-delay: 0.25s; }
+.bar-col:nth-child(7) .bar { animation-delay: 0.3s; }
+
+.bar-value {
+  font: var(--type-caption);
+  color: var(--color-muted);
+}
+
+.bar-label {
+  font: var(--type-caption-uppercase);
+  letter-spacing: var(--type-caption-uppercase-spacing);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* Leave balance progress bars */
+.balance-row {
+  margin-bottom: var(--space-base);
+}
+
+.balance-row:last-child {
+  margin-bottom: 0;
+}
+
+.balance-top {
+  display: flex;
+  justify-content: space-between;
+  font: var(--type-body-sm);
+  color: var(--color-body-strong);
+  margin-bottom: var(--space-xs);
+}
+
+.balance-track {
+  height: 8px;
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.balance-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  animation: balance-fill 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes balance-fill {
+  from { width: 0; }
+}
+
+.balance-fill--mint { background: linear-gradient(90deg, var(--color-gradient-mint), var(--color-gradient-sky)); }
+.balance-fill--peach { background: linear-gradient(90deg, var(--color-gradient-peach), var(--color-gradient-rose)); }
+.balance-fill--lavender { background: linear-gradient(90deg, var(--color-gradient-lavender), var(--color-gradient-sky)); }
+
+/* Salary / payroll summary rows */
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-hairline-soft);
+  font: var(--type-body-sm);
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-row__label {
+  color: var(--color-muted);
+}
+
+.summary-row__value {
+  color: var(--color-body-strong);
+  font-weight: 500;
+}
+
+.card--dark .summary-row {
+  border-color: var(--color-surface-dark-elevated);
+}
+
+.card--dark .summary-row__label {
+  color: var(--color-on-dark-soft);
+}
+
+.card--dark .summary-row__value {
+  color: var(--color-on-dark);
+}
+
+.card--dark .btn--outline {
+  color: var(--color-on-dark);
+  border-color: var(--color-on-dark-soft);
+}
+
+.card--dark .btn--outline:hover {
+  border-color: var(--color-on-dark);
+}
+
+.cta-band .btn {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.cta-band__text {
+  position: relative;
+  z-index: 1;
+}
+
+/* CTA band (cta-band recipe) */
+.cta-band {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--space-lg);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-xxl);
+  padding: var(--space-xxl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  overflow: hidden;
+}
+
+.cta-band__title {
+  font: var(--type-display-sm);
+  margin: 0 0 var(--space-xxs);
+}
+
+.cta-band__sub {
+  font: var(--type-body-sm);
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.cta-band .orb {
+  width: 300px;
+  height: 300px;
+  top: -100px;
+  right: -80px;
+  opacity: 0.4;
+}
+
 /* Entrance animations */
 .quick-cards .card,
 .stat-row .card,
