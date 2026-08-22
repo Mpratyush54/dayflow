@@ -131,6 +131,7 @@ export default function EmployeeDashboard() {
           </Card>
 
           <Card className="bento__mid card--dark">
+            {/* TODO(#11): wire net pay + breakdown to GET /api/payroll instead of these figures */}
             <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
               <CountdownRing days={10} total={31} label="to payday" />
               <div>
@@ -178,6 +179,7 @@ export default function EmployeeDashboard() {
         </div>
 
         <div className="cta-band">
+          {/* TODO(#11): payslip figures from GET /api/payroll */}
           <div className="orb" aria-hidden />
           <div className="cta-band__text">
             <h3 className="cta-band__title">Your July payslip is ready</h3>

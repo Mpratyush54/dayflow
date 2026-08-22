@@ -121,6 +121,7 @@ export default function AdminDashboard() {
           </Card>
 
           <Card className="bento__tall card--tint-lavender">
+            {/* TODO(#11): wire to GET /api/payroll/all + GET /api/employees */}
             <Donut value={75} label="Payroll processed" sublabel="3 of 4 employees" />
           </Card>
 

@@ -365,10 +365,61 @@ export const swaggerSpec = {
     },
     '/api/payroll': {
       get: {
-        summary: 'Own salary details (read-only)',
+        summary: 'Own salary structure (read-only; net pay computed server-side)',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Payroll details' },
+          200: { description: 'Payroll record with totals + net pay' },
+          404: { description: 'No payroll record yet' },
+        },
+      },
+    },
+    '/api/payroll/all': {
+      get: {
+        summary: 'All salary structures, employee populated (HR/ADMIN only)',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Payroll records' },
+          403: { description: 'Forbidden' },
+        },
+      },
+    },
+    '/api/payroll/{userId}': {
+      patch: {
+        summary: 'Update an employee salary structure (HR/ADMIN only, upsert with revision trail)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  basicSalary: { type: 'number', minimum: 0 },
+                  currency: { type: 'string' },
+                  allowances: {
+                    type: 'object',
+                    description: 'name → non-negative amount',
+                    additionalProperties: { type: 'number' },
+                  },
+                  deductions: {
+                    type: 'object',
+                    description: 'name → non-negative amount',
+                    additionalProperties: { type: 'number' },
+                  },
+                  effectiveFrom: { type: 'string', format: 'date' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Updated payroll record (previous structure archived in revisions)' },
+          400: { description: 'Invalid amounts' },
+          403: { description: 'Forbidden — HR/ADMIN only' },
+          404: { description: 'Employee not found' },
         },
       },
     },
