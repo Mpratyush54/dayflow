@@ -7,6 +7,10 @@ export function getMyAttendance(days = 7, date?: string): Promise<AttendanceWind
   return api.get<AttendanceWindow>(`/attendance?${qs.toString()}`);
 }
 
+export function getMyAttendanceByMonth(month: string): Promise<AttendanceWindow> {
+  return api.get<AttendanceWindow>(`/attendance?month=${encodeURIComponent(month)}`);
+}
+
 export function checkIn(): Promise<AttendanceDay> {
   return api.post<AttendanceDay>('/attendance/checkin');
 }

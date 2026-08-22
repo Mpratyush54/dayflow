@@ -14,6 +14,37 @@ import { getAttendanceStreamUrl, getTeamAttendance } from '../../api/attendance'
 import type { TeamAttendance } from '../../types';
 import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
 
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function monthShortLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString([], { month: 'short' });
+}
+function monthLongLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
+}
+function resolveDateForMonth(month: string): string {
+  const today = todayKey();
+  if (month === today.slice(0, 7)) return today;
+  const [y, m] = month.split('-').map(Number);
+  const last = new Date(y, m, 0);
+  return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+}
+
 function Skeletons() {
   return (
     <div className="bento">
@@ -25,21 +56,23 @@ function Skeletons() {
   );
 }
 
-function fmtTime(value: string | null) {
+function fmtTime(value: string | null): string {
   if (!value) return '—';
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function AttendanceOverview() {
   const { toasts, push } = useToasts();
   const [searchParams, setSearchParams] = useSearchParams();
-  const paramDate = searchParams.get('date');
-  const date = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : todayKey();
+  const curMonth = currentMonthKey();
+  const rawMonth = searchParams.get('month');
+  const rawDate = searchParams.get('date');
+  let selectedMonth: string;
+  if (rawMonth && MONTH_RE.test(rawMonth) && rawMonth <= curMonth) selectedMonth = rawMonth;
+  else if (rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) selectedMonth = rawDate.slice(0, 7) <= curMonth ? rawDate.slice(0, 7) : curMonth;
+  else selectedMonth = curMonth;
+
+  const date = resolveDateForMonth(selectedMonth);
   const [data, setData] = useState<TeamAttendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -125,24 +158,45 @@ export default function AttendanceOverview() {
 
   const rows = data?.rows ?? [];
   const filteredRows = useMemo(() => {
-    const q = searchQ.trim().toLowerCase();
-    if (!q) return rows;
+    const needle = searchQ.trim().toLowerCase();
+    if (!needle) return rows;
     return rows.filter((r) => {
-      const u = r.user;
-      const hay = `${u.name ?? ''} ${u.email ?? ''} ${u.employeeId ?? ''}`.toLowerCase();
-      return hay.includes(q);
+      const name = (r.user.name ?? '').toLowerCase();
+      const email = (r.user.email ?? '').toLowerCase();
+      const empId = (r.user.employeeId ?? '').toLowerCase();
+      return name.includes(needle) || email.includes(needle) || empId.includes(needle);
     });
   }, [rows, searchQ]);
-  const present = rows.filter((r) => r.status === 'PRESENT').length;
-  const halfDay = rows.filter((r) => r.status === 'HALF_DAY').length;
-  const absent = rows.filter((r) => r.status === 'ABSENT').length;
-  const onLeave = rows.filter((r) => r.status === 'LEAVE').length;
-  const stillInBase = rows.filter((r) => r.checkIn && !r.checkOut).length;
+
+  const present = filteredRows.filter((r) => r.status === 'PRESENT').length;
+  const onLeave = filteredRows.filter((r) => r.status === 'LEAVE').length;
+  const stillInBase = filteredRows.filter((r) => r.checkIn && !r.checkOut).length;
   const stillIn = liveStillIn ?? stillInBase;
+  const totalWorkingDays = rows.length > 0 ? rows.length - (data?.isWeekend ? rows.length : 0) : 0;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginatedRows = filteredRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const isToday = date === todayKey();
+
+  const prevMonth = shiftMonth(selectedMonth, -1);
+  const nextMonth = shiftMonth(selectedMonth, 1);
+  const canNext = nextMonth <= curMonth;
+  const monthOptions = useMemo(() => {
+    const opts: string[] = [];
+    for (let i = -11; i <= 0; i++) opts.push(shiftMonth(curMonth, i));
+    if (!opts.includes(selectedMonth)) opts.push(selectedMonth);
+    opts.sort();
+    return opts;
+  }, [curMonth, selectedMonth]);
+
+  function updateSearchParams(next: Record<string, string | undefined>) {
+    const sp = new URLSearchParams(searchParams);
+    Object.entries(next).forEach(([k, v]) => {
+      if (v === undefined || v === '') sp.delete(k);
+      else sp.set(k, v);
+    });
+    setSearchParams(sp);
+  }
 
   return (
     <Sidebar
@@ -179,8 +233,11 @@ export default function AttendanceOverview() {
           <>
             <div className="dash-head">
               <div>
-                <p className="dash-sub">{new Date(`${data.date}T00:00:00`).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                <p className="dash-sub">{monthLongLabel(selectedMonth)} · {new Date(`${data.date}T00:00:00`).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
                 <h1>Team <span className="text-gradient">attendance</span></h1>
+                <p className="dash-sub" style={{ marginTop: 6, color: 'var(--color-muted)' }}>
+                  {present} present · {onLeave} leaves · {filteredRows.length} total · {totalWorkingDays} working · {data.date}
+                </p>
                 {data.isWeekend && (
                   <p className="ticker" style={{ marginTop: 12 }}>
                     <span className="ticker__dot" aria-hidden />
@@ -188,71 +245,105 @@ export default function AttendanceOverview() {
                   </p>
                 )}
               </div>
-              <div className="hero-actions">
-                <Input
-                  label="Search"
-                  type="search"
-                  placeholder="Name, email or ID"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="list-search-input"
-                />
-                <input
-                  type="date"
-                  className="input"
-                  style={{ width: 'auto', height: 'var(--button-height)' }}
-                  value={date}
-                  max={todayKey()}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    const next = new URLSearchParams(searchParams);
-                    if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) next.set('date', v);
-                    else next.delete('date');
-                    next.delete('page');
-                    setSearchParams(next, { replace: true });
-                  }}
-                  aria-label="Pick a date"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const next = new URLSearchParams(searchParams);
-                    next.delete('date');
-                    next.delete('page');
-                    setSearchParams(next, { replace: true });
-                    push('Showing today');
+              <div className="hero-actions" style={{ flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                <div
+                  className="month-nav"
+                  role="navigation"
+                  aria-label="Month navigator"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-xs)',
+                    padding: 'var(--space-xxs)',
+                    border: '1px solid var(--color-hairline)',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'var(--color-surface-card)',
                   }}
                 >
-                  Today
-                </Button>
+                  <Button
+                    variant="outline"
+                    aria-label="Previous month"
+                    onClick={() => updateSearchParams({ month: prevMonth, page: undefined })}
+                    style={{ border: 'none', minWidth: 72 }}
+                  >
+                    &lt; Prev
+                  </Button>
+                  <label htmlFor="admin-month-select" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>Select month</label>
+                  <select
+                    id="admin-month-select"
+                    aria-label="Select month"
+                    value={selectedMonth}
+                    onChange={(e) => updateSearchParams({ month: e.target.value, page: undefined })}
+                    style={{
+                      border: '1px solid var(--color-hairline)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '6px 12px',
+                      font: 'var(--type-button)',
+                      background: 'var(--color-surface-card)',
+                      color: 'var(--color-ink)',
+                      minWidth: 110,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {monthOptions.map((m) => (
+                      <option key={m} value={m}>{monthShortLabel(m)} {m.slice(0, 4)}</option>
+                    ))}
+                  </select>
+                  <span aria-hidden style={{ color: 'var(--color-muted)' }}>▼</span>
+                  <Button
+                    variant="outline"
+                    aria-label="Next month"
+                    disabled={!canNext}
+                    onClick={() => { if (canNext) updateSearchParams({ month: nextMonth, page: undefined }); }}
+                    style={{ border: 'none', minWidth: 72, opacity: canNext ? 1 : 0.45 }}
+                  >
+                    Next &gt;
+                  </Button>
+                </div>
+                <Button variant="outline" onClick={() => { setSearchParams({}); push('Showing current month'); }}>Today</Button>
               </div>
+            </div>
+
+            <div style={{ marginBottom: 'var(--space-md)', display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Input
+                label="Search employees"
+                type="search"
+                placeholder="Search employees..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="list-search-input"
+              />
+              {searchQ && (
+                <Button variant="outline" onClick={() => setSearchInput('')}>Clear</Button>
+              )}
+              <span className="dash-sub" style={{ color: 'var(--color-muted)' }}>{filteredRows.length} employees</span>
             </div>
 
             <div className="bento">
               <Card className="bento__mid stat-card card--tint-mint">
-                <Sparkline points={rows.map((r) => (r.status === 'PRESENT' ? 1 : 0))} tone="mint" />
+                <Sparkline points={filteredRows.map((r) => (r.status === 'PRESENT' ? 1 : 0))} tone="mint" />
                 <span className="stat-xl">{present}</span>
-                <span className="stat-label">Full days</span>
-              </Card>
-              <Card className="bento__mid stat-card card--tint-lavender">
-                <Sparkline points={rows.map((r) => (r.status === 'HALF_DAY' ? 1 : 0))} tone="lavender" />
-                <span className="stat-xl">{halfDay}</span>
-                <span className="stat-label">Half days</span>
+                <span className="stat-label">Count present</span>
               </Card>
               <Card className="bento__mid stat-card card--tint-peach">
-                <Sparkline points={rows.map((r) => (r.status === 'ABSENT' ? 1 : 0))} tone="peach" />
-                <span className="stat-xl">{absent}</span>
-                <span className="stat-label">Absent{onLeave > 0 ? ` · ${onLeave} on leave` : ''}</span>
+                <Sparkline points={filteredRows.map((r) => (r.status === 'LEAVE' ? 1 : 0))} tone="peach" />
+                <span className="stat-xl">{onLeave}</span>
+                <span className="stat-label">Leaves count</span>
+              </Card>
+              <Card className="bento__mid stat-card card--tint-lavender">
+                <Sparkline points={filteredRows.map((r) => (r.status === 'ABSENT' ? 1 : 0))} tone="lavender" />
+                <span className="stat-xl">{rows.length}</span>
+                <span className="stat-label">Total working days</span>
               </Card>
               <Card className="bento__mid stat-card card--tint-sky">
-                <Sparkline points={rows.map((r) => (r.checkIn && !r.checkOut ? 1 : 0))} tone="sky" />
+                <Sparkline points={filteredRows.map((r) => (r.checkIn && !r.checkOut ? 1 : 0))} tone="sky" />
                 <span className="stat-xl">{stillIn}</span>
-                <span className="stat-label">Still in</span>
+                <span className="stat-label">Selected date · {data.date}</span>
               </Card>
 
-              <Card className="bento__wide" heading={`Attendance · ${data.date} (${rows.length})`}>
-                {rows.length === 0 ? (
-                  <p className="dash-sub">No employees yet.</p>
+              <Card className="bento__wide" heading={`Attendance · ${data.date} (${filteredRows.length}${searchQ ? ' filtered' : ''})`}>
+                {filteredRows.length === 0 ? (
+                  <p className="dash-sub">{searchQ ? `No employees matching "${searchQ}".` : 'No employees yet.'}</p>
                 ) : (
                   <>
                     <div className="table-card">
@@ -260,11 +351,10 @@ export default function AttendanceOverview() {
                         <thead>
                           <tr>
                             <th>Employee</th>
-                            <th>Role</th>
-                            <th>Checked in</th>
-                            <th>Checked out</th>
-                            <th>Hours</th>
-                            <th>Work hours</th>
+                            <th>Date</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Work Hours</th>
                             <th>Extra hours</th>
                             <th>Status</th>
                           </tr>
@@ -279,10 +369,9 @@ export default function AttendanceOverview() {
                               <span className="sidebar__username">{r.user.name?.trim() || r.user.email}</span>{' '}
                               <span style={{ color: 'var(--color-muted)' }}>· {r.user.employeeId}</span>
                             </td>
-                            <td>{r.user.role}</td>
+                            <td className="table-mono">{data.date}</td>
                             <td className="table-mono">{fmtTime(r.checkIn)}</td>
                             <td className="table-mono">{fmtTime(r.checkOut)}</td>
-                            <td className="table-mono">{fmtHours(total)}</td>
                             <td className="table-mono">{total !== null ? fmtHours(workHours(total)) : '—'}</td>
                             <td className="table-mono">{total !== null ? fmtHours(extraHours(total)) : '—'}</td>
                             <td>
