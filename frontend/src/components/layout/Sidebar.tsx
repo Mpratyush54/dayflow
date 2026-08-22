@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../../context/theme-context';
+import { useAuth } from '../../context/AuthContext';
 import CommandPalette from '../common/CommandPalette';
 import type { Command } from '../common/CommandPalette';
 
@@ -13,13 +14,32 @@ export interface NavItem {
 
 interface SidebarProps {
   items: NavItem[];
+  /** Display fallback when no signed-in user is available (demo data). */
   user: { name: string; role: string; initials: string };
   commands?: Command[];
   children: ReactNode;
 }
 
+function initialsOf(name: string) {
+  return name
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join('');
+}
+
 export default function Sidebar({ items, user, commands = [], children }: SidebarProps) {
   const { theme, toggle } = useTheme();
+  const { user: authUser, signOut } = useAuth();
+
+  const display = authUser
+    ? {
+        name: authUser.name?.trim() || authUser.email,
+        role: `${authUser.role} · ${authUser.employeeId}`,
+        initials: initialsOf(authUser.name?.trim() || authUser.email),
+      }
+    : user;
 
   return (
     <div className="shell">
@@ -50,11 +70,14 @@ export default function Sidebar({ items, user, commands = [], children }: Sideba
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
         </button>
         <div className="sidebar__user">
-          <span className="avatar avatar--mint">{user.initials}</span>
+          <span className="avatar avatar--mint">{display.initials}</span>
           <span>
-            <span className="sidebar__username">{user.name}</span>
-            <span className="sidebar__userrole">{user.role}</span>
+            <span className="sidebar__username">{display.name}</span>
+            <span className="sidebar__userrole">{display.role}</span>
           </span>
+          <button type="button" className="sidebar__signout" onClick={() => void signOut()}>
+            Sign out
+          </button>
         </div>
       </aside>
       <div className="shell__main">{children}</div>

@@ -8,4 +8,11 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  server: {
+    proxy: {
+      // Same-origin /api in dev: no CORS, and the httpOnly refresh cookie is
+      // first-party so browsers never block it.
+      '/api': 'http://localhost:5000',
+    },
+  },
 })

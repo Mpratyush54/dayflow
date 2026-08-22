@@ -1,7 +1,11 @@
 import 'dotenv/config';
 import { fileURLToPath } from 'node:url';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import User from '../models/user.model.js';
+
+// Password for every seeded account (meets the signup security rules)
+const DEMO_PASSWORD = 'Dayflow!2026';
 
 // Creates three demo employees with full profiles so the employee profile
 // feature can be demoed before the auth module lands. Safe to re-run —
@@ -66,20 +70,17 @@ const SEED_USERS = [
 ];
 
 export async function seed() {
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
   const users = [];
   for (const data of SEED_USERS) {
     const user = await User.findOneAndUpdate(
       { employeeId: data.employeeId },
-      { ...data, passwordHash: 'dev-no-auth-yet' },
+      { ...data, passwordHash, isVerified: true },
       { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true },
     );
     users.push(user);
   }
   return users;
-}
-
-function devToken(user) {
-  return Buffer.from(JSON.stringify({ id: user._id.toString(), role: user.role })).toString('base64');
 }
 
 async function main() {
@@ -90,9 +91,9 @@ async function main() {
   await mongoose.connect(url);
   const users = await seed();
   console.log(`Seeded ${users.length} employees.\n`);
-  console.log('Dev tokens (localStorage.token in the browser):');
+  console.log(`Sign in at /signin with password "${DEMO_PASSWORD}" using:`);
   for (const user of users) {
-    console.log(`  ${user.role.padEnd(8)} ${user.name} → ${devToken(user)}`);
+    console.log(`  ${user.role.padEnd(8)} ${user.name} → ${user.email}`);
   }
   await mongoose.disconnect();
 }

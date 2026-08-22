@@ -3,17 +3,28 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/layout/AuthLayout';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(''); // TODO: call POST /api/auth/signin, then navigate by role
-    navigate('/dashboard');
+    setError('');
+    setSubmitting(true);
+    try {
+      const user = await signIn(email, password);
+      navigate(user.role === 'EMPLOYEE' ? '/dashboard' : '/admin');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not sign in — try again');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -22,13 +33,12 @@ export default function SignIn() {
         <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error && <p className="form-error">{error}</p>}
-        <Button type="submit" className="btn--block">Sign in</Button>
+        <Button type="submit" className="btn--block" disabled={submitting}>
+          {submitting ? 'Signing in…' : 'Sign in'}
+        </Button>
       </form>
       <p className="auth__alt">
         Don&apos;t have an account? <Link to="/signup">Sign up</Link>
-      </p>
-      <p className="auth__alt">
-        <Link to="/admin">Demo: admin view →</Link>
       </p>
     </AuthLayout>
   );

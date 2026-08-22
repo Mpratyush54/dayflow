@@ -1,6 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
+import VerifyEmail from './pages/auth/VerifyEmail';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import Profile from './pages/employee/Profile';
 import Attendance from './pages/employee/Attendance';
@@ -17,22 +20,34 @@ import Payroll from './pages/admin/Payroll';
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/signin" replace />} />
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/dashboard" element={<EmployeeDashboard />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/attendance" element={<Attendance />} />
-        <Route path="/leaves" element={<Leaves />} />
-        <Route path="/payslip" element={<Profile />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/employees" element={<Employees />} />
-        <Route path="/admin/attendance" element={<AdminAttendance />} />
-        <Route path="/admin/approvals" element={<LeaveApprovals />} />
-        <Route path="/admin/payroll" element={<Payroll />} />
-        <Route path="*" element={<Navigate to="/signin" replace />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/signin" replace />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+
+          {/* Any signed-in user */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<EmployeeDashboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/leaves" element={<Leaves />} />
+            <Route path="/payslip" element={<Profile />} />
+          </Route>
+
+          {/* HR / ADMIN only */}
+          <Route element={<ProtectedRoute roles={['HR', 'ADMIN']} />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/employees" element={<Employees />} />
+            <Route path="/admin/attendance" element={<AdminAttendance />} />
+            <Route path="/admin/approvals" element={<LeaveApprovals />} />
+            <Route path="/admin/payroll" element={<Payroll />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/signin" replace />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

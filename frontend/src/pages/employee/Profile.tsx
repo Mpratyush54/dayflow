@@ -7,7 +7,7 @@ import Badge from '../../components/common/Badge';
 import { getEmployee, updateEmployee } from '../../api/employees';
 import type { EmployeePatch } from '../../api/employees';
 import type { EmployeeProfile } from '../../types';
-import { getCurrentUser } from '../../utils/devUser';
+import { useAuth } from '../../context/AuthContext';
 import './Profile.css';
 
 const MAX_IMAGE_BYTES = 1024 * 1024;
@@ -74,8 +74,7 @@ function toFormState(profile: EmployeeProfile): FormState {
 }
 
 export default function Profile() {
-  // DEV-ONLY current user — replaced by a real session when auth lands
-  const [user] = useState(getCurrentUser);
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -175,12 +174,14 @@ export default function Profile() {
   }
 
   if (!user) {
+    if (authLoading) {
+      return <main className="profile-page"><p className="profile-page__status">Loading…</p></main>;
+    }
     return (
       <main className="profile-page">
-        <Card heading="Dev setup required">
+        <Card heading="Sign in required">
           <p className="profile-note">
-            No user token set — run <code>npm run seed</code> in backend/, copy one of the
-            printed dev tokens into <code>localStorage.token</code>, then reload this page.
+            You need to sign in to view your profile.
           </p>
         </Card>
       </main>
