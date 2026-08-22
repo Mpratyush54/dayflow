@@ -6,6 +6,7 @@ import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import CountdownRing from '../../components/common/CountdownRing';
 import EmployeeDirectory from '../../components/common/EmployeeDirectory';
+import ProfileCompletionRing, { computeProfileCompletion, missingFields } from '../../components/common/ProfileCompletionRing';
 import Donut from '../../components/charts/Donut';
 import AreaChart from '../../components/charts/AreaChart';
 import Heatmap from '../../components/charts/Heatmap';
@@ -16,7 +17,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { checkIn, checkOut, getMyAttendance } from '../../api/attendance';
 import { getMyLeaves } from '../../api/leaves';
 import { getMyPayroll } from '../../api/payroll';
-import type { AttendanceDay, AttendanceWindow, LeaveRequest, Payroll } from '../../types';
+import { getEmployee } from '../../api/employees';
+import type { AttendanceDay, AttendanceWindow, EmployeeProfile, LeaveRequest, Payroll } from '../../types';
 
 type Data = {
   attendance: AttendanceWindow | null;
@@ -86,6 +88,7 @@ export default function EmployeeDashboard() {
   const { pushNotification } = useNotifications();
   const [now, setNow] = useState(() => new Date());
   const [data, setData] = useState<Data>({ attendance: null, leaves: null, payroll: null });
+  const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -112,6 +115,11 @@ export default function EmployeeDashboard() {
       alive = false;
     };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getEmployee(user.id).then(setProfile).catch(() => setProfile(null));
+  }, [user?.id]);
 
   useEffect(() => {
     const todayDay = data.attendance?.days[data.attendance.days.length - 1];
@@ -238,6 +246,22 @@ export default function EmployeeDashboard() {
         {loading ? <Skeletons /> : (<>
         <div className="bento">
           <EmployeeDirectory />
+
+          <Card className="bento__mid animate-in" heading="Profile completion" style={{ animationDelay: '0.06s' as React.CSSProperties['animationDelay'] } as React.CSSProperties}>
+            {profile ? (
+              <ProfileCompletionRing
+                value={computeProfileCompletion(profile)}
+                size={110}
+                missing={missingFields(profile)}
+                onCtaClick={() => navigate('/profile')}
+              />
+            ) : (
+              <div className="empty-state" role="status" aria-live="polite">
+                <p className="dash-sub">Complete your profile to unlock 85%+ onboarding.</p>
+                <Button variant="outline" onClick={() => navigate('/profile')}>Go to profile</Button>
+              </div>
+            )}
+          </Card>
 
           <Card className="bento__hero card--grad" heading="Hours this week">
             {hours.some(h => h > 0) ? (

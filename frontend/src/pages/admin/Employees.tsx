@@ -197,7 +197,15 @@ export default function EmployeeList() {
 
             <Card className={viewMode === 'grid' ? '' : 'table-card'} heading={`All employees${pagination ? ` (${pagination.total})` : employees ? ` (${employees.length})` : ''}`}>
               {employees.length === 0 ? (
-                <p className="dash-sub">No employees yet — create the first one with the button above.</p>
+                <div className="empty-state empty-state--card animate-in" role="status" aria-live="polite" aria-label="No employees yet">
+                  <div className="empty-state__illustration" aria-hidden>👥</div>
+                  <h3 className="empty-state__title">No employees yet</h3>
+                  <p className="empty-state__desc">Get started by creating the first employee. An Employee ID and one-time password are generated automatically.</p>
+                  <div className="empty-state__actions">
+                    <Button onClick={openModal}>＋ Create first employee</Button>
+                    <Button variant="outline" onClick={() => navigate('/admin')}>Back to overview</Button>
+                  </div>
+                </div>
               ) : viewMode === 'grid' ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 'var(--space-base)' }}>
