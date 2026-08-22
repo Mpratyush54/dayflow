@@ -9,6 +9,15 @@ body,
 #root {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+html {
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
 }
 
 body {
