@@ -1,8 +1,10 @@
 import { api } from './client';
 import type { AttendanceDay, AttendanceWindow, TeamAttendance } from '../types';
 
-export function getMyAttendance(days = 7): Promise<AttendanceWindow> {
-  return api.get<AttendanceWindow>(`/attendance?days=${days}`);
+export function getMyAttendance(days = 7, date?: string): Promise<AttendanceWindow> {
+  const qs = new URLSearchParams({ days: String(days) });
+  if (date) qs.set('date', date);
+  return api.get<AttendanceWindow>(`/attendance?${qs.toString()}`);
 }
 
 export function checkIn(): Promise<AttendanceDay> {

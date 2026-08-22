@@ -64,10 +64,15 @@ function shiftDate(key, days) {
   return dateKey(d);
 }
 
-// GET /api/attendance?days=7 — own daily/weekly view + summary
+// GET /api/attendance?days=7&date=YYYY-MM-DD — own daily/weekly view + summary
 export async function getMine(req, res) {
   const days = Math.min(Math.max(Number(req.query.days ?? 7) || 7, 1), 31);
-  const to = dateKey();
+  let to = dateKey();
+  if (typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) {
+    const requested = req.query.date;
+    // Clamp future dates to today
+    if (requested <= to) to = requested;
+  }
   const from = shiftDate(to, -(days - 1));
 
   const [records, leaveDays] = await Promise.all([

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
@@ -9,6 +10,11 @@ import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
 import { checkIn, checkOut, getMyAttendance } from '../../api/attendance';
 import type { AttendanceWindow } from '../../types';
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function Skeletons() {
   return (
@@ -35,15 +41,19 @@ function fmtDate(key: string) {
 
 export default function Attendance() {
   const { toasts, push } = useToasts();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dateParam = searchParams.get('date');
+  const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayKey();
   const [data, setData] = useState<AttendanceWindow | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forDate: string) => {
+    setLoading(true);
     try {
-      setData(await getMyAttendance(7));
+      setData(await getMyAttendance(7, forDate));
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load attendance');
@@ -53,8 +63,8 @@ export default function Attendance() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(selectedDate);
+  }, [load, selectedDate]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -78,7 +88,7 @@ export default function Attendance() {
           ? `Checked out · ${record.workedHours}h today`
           : `Checked in at ${fmtTime(record.checkIn)}`,
       );
-      await load();
+      await load(selectedDate);
     } catch (err) {
       push(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -116,7 +126,7 @@ export default function Attendance() {
         ) : error ? (
           <Card heading="Attendance">
             <p className="form-error">{error}</p>
-            <Button variant="outline" onClick={() => void load()}>Retry</Button>
+            <Button variant="outline" onClick={() => void load(selectedDate)}>Retry</Button>
           </Card>
         ) : data && (
           <>
@@ -136,6 +146,23 @@ export default function Attendance() {
                 )}
               </div>
               <div className="hero-actions">
+                <input
+                  type="date"
+                  className="input"
+                  style={{ width: 'auto', height: 'var(--button-height)' }}
+                  value={selectedDate}
+                  max={todayKey()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+                      setSearchParams({ date: v });
+                    } else {
+                      setSearchParams({});
+                    }
+                  }}
+                  aria-label="Pick a date"
+                />
+                <Button variant="outline" onClick={() => setSearchParams({})}>Today</Button>
                 <Badge tone={checkedOut ? 'success' : checkedIn ? 'success' : 'neutral'}>
                   {checkedOut ? 'Day complete' : checkedIn ? 'Checked in' : 'Not checked in'}
                 </Badge>
