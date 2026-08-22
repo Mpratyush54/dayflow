@@ -160,6 +160,25 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
+### Demo data
+
+With MongoDB running and `DATABASE_URL` set in `backend/.env`:
+
+```bash
+cd backend
+npm run seed
+```
+
+This creates **9 demo accounts** (7 employees + HR + admin) with ~5 weeks of attendance, leave requests (pending/approved/rejected), and payroll structures. Safe to re-run — it refreshes demo attendance, leaves, and payroll each time.
+
+| Role | Email | Password |
+|------|-------|----------|
+| Employee | `aarav@dayflow.dev` | `Dayflow!2026` |
+| HR | `meera@dayflow.dev` | `Dayflow!2026` |
+| Admin | `admin@dayflow.dev` | `Dayflow!2026` |
+
+Other employees: `priya@`, `rahul@`, `sneha@`, `vikram@`, `ananya@`, `karan@` @ `dayflow.dev` (same password). The sign-in page has one-click demo account buttons.
+
 ## Roles
 
 - **Employee**: views own profile/attendance/salary, applies for leave, check-in/out.
