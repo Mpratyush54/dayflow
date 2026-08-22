@@ -5,7 +5,7 @@
   font: var(--type-button);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn--primary {
@@ -18,6 +18,19 @@
 
 .btn--primary:active {
   background: var(--color-primary-active);
+}
+
+.btn--primary:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(41, 37, 36, 0.18);
+}
+
+[data-theme='dark'] .btn--primary:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.btn--primary:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .btn--outline {
@@ -81,6 +94,31 @@
   margin-bottom: var(--space-sm);
 }
 
+/* Featured card with a pastel gradient ring */
+.card--grad {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--color-surface-card), var(--color-surface-card)) padding-box,
+    linear-gradient(135deg, var(--color-gradient-mint), var(--color-gradient-lavender), var(--color-gradient-peach)) border-box;
+}
+
+/* Soft tinted cards, one mood per module */
+.card--tint-mint {
+  background: linear-gradient(165deg, var(--color-surface-card) 30%, rgba(167, 229, 211, 0.22));
+}
+
+.card--tint-lavender {
+  background: linear-gradient(165deg, var(--color-surface-card) 30%, rgba(200, 184, 224, 0.22));
+}
+
+.card--tint-peach {
+  background: linear-gradient(165deg, var(--color-surface-card) 30%, rgba(244, 197, 168, 0.22));
+}
+
+.card--tint-sky {
+  background: linear-gradient(165deg, var(--color-surface-card) 30%, rgba(168, 200, 232, 0.22));
+}
+
 /* Badges */
 .badge {
   display: inline-block;
@@ -120,6 +158,17 @@
   letter-spacing: var(--type-title-sm-spacing);
   color: var(--color-ink);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.top-nav__brand::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-gradient-mint), var(--color-gradient-lavender), var(--color-gradient-peach));
 }
 
 .top-nav__links {
@@ -127,4 +176,14 @@
   gap: var(--space-lg);
   align-items: center;
   font: var(--type-nav-link);
+}
+
+.top-nav__links a {
+  color: var(--color-body);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.top-nav__links a:hover {
+  color: var(--color-ink);
 }

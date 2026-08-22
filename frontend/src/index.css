@@ -2,6 +2,8 @@
 @import './styles/base.css';
 @import './components/common/components.css';
 @import './components/layout/layout.css';
+@import './components/charts/charts.css';
+@import './styles/dashboards.css';
 
 .form-error {
   font: var(--type-caption);

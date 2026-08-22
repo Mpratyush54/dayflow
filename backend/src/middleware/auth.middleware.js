@@ -1,43 +1,46 @@
-// DEV-ONLY auth stub for the employee profile feature.
-// The auth module (built separately) will replace this file with real JWT
-// verification — until then the bearer token is a base64-encoded JSON
-// payload: { "id": "<userId>", "role": "EMPLOYEE" | "HR" | "ADMIN" }.
-// `npm run seed` prints ready-made dev tokens.
+import User from '../models/user.model.js';
+import { env } from '../config/env.js';
+import { HttpError } from '../utils/httpError.js';
+import { verifyAccessToken } from '../utils/tokens.js';
 
-const ROLES = ['EMPLOYEE', 'HR', 'ADMIN'];
-
-function decodeDevToken(token) {
+// Verifies the Bearer access token and loads the fresh user onto req.user
+export async function requireAuth(req, _res, next) {
   try {
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
-    if (ROLES.includes(payload.role) && typeof payload.id === 'string') {
-      return { id: payload.id, role: payload.role };
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) {
+      throw new HttpError(401, 'Authentication required', 'NO_TOKEN');
     }
-  } catch {
-    // fall through — malformed token
-  }
-  return null;
-}
 
-// Verifies the dev token and attaches the user to req.user
-export function requireAuth(req, res, next) {
-  const header = req.headers.authorization ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  const user = token ? decodeDevToken(token) : null;
-  if (!user) {
-    return res.status(401).json({ message: 'Authentication required' });
+    let payload;
+    try {
+      payload = verifyAccessToken(header.slice(7));
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        throw new HttpError(401, 'Access token expired', 'TOKEN_EXPIRED');
+      }
+      throw new HttpError(401, 'Invalid access token', 'INVALID_TOKEN');
+    }
+
+    const user = await User.findById(payload.sub);
+    if (!user) {
+      throw new HttpError(401, 'Account not found', 'INVALID_TOKEN');
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    next(err);
   }
-  req.user = user;
-  next();
 }
 
 // Restricts a route to specific roles, e.g. requireRole('HR', 'ADMIN')
 export function requireRole(...roles) {
-  return (req, res, next) => {
+  return (req, _res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
+      return next(new HttpError(401, 'Authentication required', 'NO_TOKEN'));
     }
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: 'Insufficient permissions' });
+      return next(new HttpError(403, 'You do not have permission to access this resource', 'FORBIDDEN'));
     }
     next();
   };
