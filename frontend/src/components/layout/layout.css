@@ -2,11 +2,13 @@
 
 .auth {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: auto;
   padding: var(--space-lg);
 }
 
