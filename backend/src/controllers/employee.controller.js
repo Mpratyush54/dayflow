@@ -3,7 +3,9 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import Attendance from '../models/attendance.model.js';
 import User, { USER_PUBLIC_FIELDS } from '../models/user.model.js';
+import { getApprovedLeaveDays } from '../services/attendance.service.js';
 import { env } from '../config/env.js';
 import { createEmployeeSchema } from '../utils/validation.js';
 import { generateVerificationToken } from '../utils/tokens.js';
@@ -83,6 +85,49 @@ export async function createEmployee(req, res, next) {
       }
     }
     return res.status(503).json({ message: 'Could not allocate a unique Employee ID, please retry' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+function dateKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// GET /api/employees/directory — company directory for any signed-in user
+export async function getDirectory(req, res, next) {
+  try {
+    const date = dateKey();
+    const users = await User.find({ status: { $ne: 'RESIGNED' } })
+      .select(`${USER_PUBLIC_FIELDS} status`)
+      .sort({ name: 1, employeeId: 1 });
+
+    const [records, leaveDays] = await Promise.all([
+      Attendance.find({ date }),
+      getApprovedLeaveDays(
+        users.map((u) => u._id),
+        date,
+        date,
+      ),
+    ]);
+
+    const byUser = new Map(records.map((r) => [r.user.toString(), r]));
+
+    const directory = users.map((user) => {
+      const record = byUser.get(user._id.toString());
+      const onLeave =
+        leaveDays.get(user._id.toString())?.has(date) || user.status === 'ON_LEAVE';
+      let presence = 'absent';
+      if (onLeave) presence = 'leave';
+      else if (record?.checkIn) presence = 'present';
+
+      return { ...user.toJSON(), presence };
+    });
+
+    res.json(directory);
   } catch (err) {
     next(err);
   }

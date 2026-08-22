@@ -44,6 +44,7 @@ export default function Leaves() {
   const [leaves, setLeaves] = useState<LeaveRequest[] | null>(null);
   const [loadError, setLoadError] = useState('');
   const [form, setForm] = useState<ApplyLeaveInput>(EMPTY_FORM);
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -95,11 +96,25 @@ export default function Leaves() {
         return;
       }
     }
+    if (attachment) {
+      if (attachment.size > 5 * 1024 * 1024) {
+        setFormError('Attachment must be ≤5MB (PDF/JPG/PNG)');
+        return;
+      }
+      const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      if (!allowed.includes(attachment.type)) {
+        setFormError('Attachment must be PDF, JPG or PNG');
+        return;
+      }
+    }
     setSubmitting(true);
     try {
-      const created = await applyLeave(form);
+      const created = await applyLeave({ ...form, attachment });
       push(`${created.type} leave requested for ${formatDate(created.startDate)}`);
       setForm({ ...EMPTY_FORM, type: form.type });
+      setAttachment(null);
+      const fileInput = document.getElementById('leave-attachment') as HTMLInputElement | null;
+      if (fileInput) fileInput.value = '';
       setLeaves((prev) => [created, ...(prev ?? [])]);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to submit');
@@ -217,6 +232,19 @@ export default function Leaves() {
                       onChange={set('remarks')}
                     />
                   </div>
+                  <div className="field">
+                    <label className="field__label" htmlFor="leave-attachment">
+                      Certificate {form.type === 'SICK' ? '(recommended for sick leave)' : '(optional)'} — PDF/JPG/PNG ≤5MB
+                    </label>
+                    <input
+                      id="leave-attachment"
+                      type="file"
+                      accept=".pdf,image/jpeg,image/png,image/jpg"
+                      className="input"
+                      onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+                    />
+                    {attachment && <span className="dash-sub" style={{ display: 'block', marginTop: 6 }}>{attachment.name} · {(attachment.size / 1024).toFixed(0)} KB</span>}
+                  </div>
                   {formError && <p className="form-error">{formError}</p>}
                   <Button type="submit" disabled={submitting} className={submitting ? 'btn--loading' : ''}>
                     {submitting && <span className="spinner" />}
@@ -253,7 +281,7 @@ export default function Leaves() {
                 {leaves && leaves.length > 0 ? (
                   <table className="table">
                     <thead>
-                      <tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Review</th></tr>
+                      <tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Certificate</th><th>Review</th></tr>
                     </thead>
                     <tbody>
                       {leaves.map((l) => (
@@ -263,6 +291,7 @@ export default function Leaves() {
                           <td>{formatDate(l.endDate)}</td>
                           <td>{daysInclusive(l.startDate, l.endDate)}</td>
                           <td><Badge tone={STATUS_TONE[l.status]}>{l.status.toLowerCase()}</Badge></td>
+                          <td>{l.attachmentUrl ? <a href={l.attachmentUrl} target="_blank" rel="noreferrer">View</a> : '—'}</td>
                           <td className="dash-sub" title={l.reviewerComment ?? ''}>
                             {l.reviewerComment || '—'}
                           </td>

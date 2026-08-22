@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
 import {
   createEmployee,
+  getDirectory,
   listEmployees,
   getEmployee,
   updateEmployee,
@@ -46,6 +47,9 @@ router.post('/', requireRole('HR', 'ADMIN'), createEmployee);
 
 // GET /api/employees — list employees (admin)
 router.get('/', requireRole('HR', 'ADMIN'), listEmployees);
+
+// GET /api/employees/directory — company directory (all signed-in users)
+router.get('/directory', getDirectory);
 
 // GET /api/employees/:id — view profile (self or admin)
 router.get('/:id', getEmployee);

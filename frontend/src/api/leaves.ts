@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, getAccessToken, refreshAccessToken, ApiError } from './client';
 import type { LeaveRequest, LeaveStatus, LeaveType } from '../types';
 
 export interface ApplyLeaveInput {
@@ -6,6 +6,7 @@ export interface ApplyLeaveInput {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   remarks?: string;
+  attachment?: File | null;
 }
 
 export type ReviewDecision = 'APPROVED' | 'REJECTED';
@@ -28,8 +29,41 @@ export function getMyLeaves(page?: number, limit?: number): Promise<LeaveRequest
   return api.get<LeaveRequest[] | Paginated<LeaveRequest>>(`/leaves${suffix}`);
 }
 
-export function applyLeave(input: ApplyLeaveInput) {
-  return api.post<LeaveRequest>('/leaves', input);
+export async function applyLeave(input: ApplyLeaveInput): Promise<LeaveRequest> {
+  if (input.attachment) {
+    const form = new FormData();
+    form.append('type', input.type);
+    form.append('startDate', input.startDate);
+    form.append('endDate', input.endDate);
+    if (input.remarks) form.append('remarks', input.remarks);
+    form.append('attachment', input.attachment);
+    const BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
+    const token = getAccessToken();
+    let res = await fetch(`${BASE_URL}/leaves`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (res.status === 401 && token) {
+      const renewed = await refreshAccessToken();
+      if (renewed) {
+        res = await fetch(`${BASE_URL}/leaves`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Authorization: `Bearer ${renewed}` },
+          body: form,
+        });
+      }
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, body.message ?? `Request failed: ${res.status}`, body.code);
+    }
+    return res.json();
+  }
+  const { attachment: _a, ...json } = input;
+  return api.post<LeaveRequest>('/leaves', json);
 }
 
 export function getAllLeaves(status?: LeaveStatus): Promise<LeaveRequest[]>;

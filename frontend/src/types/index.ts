@@ -28,6 +28,8 @@ export interface User {
   phone?: string;
   address?: string;
   profilePicture?: string;
+  designation?: string;
+  department?: string;
 }
 
 export interface EmployeeProfile extends User {
@@ -114,6 +116,7 @@ export interface LeaveRequest {
   startDate: string;
   endDate: string;
   remarks?: string;
+  attachmentUrl?: string;
   status: LeaveStatus;
   reviewerId?: string | null;
   reviewerComment?: string;

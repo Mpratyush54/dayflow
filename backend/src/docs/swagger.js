@@ -177,6 +177,18 @@ export const swaggerSpec = {
         },
       },
     },
+    '/api/employees/directory': {
+      get: {
+        summary: 'Company directory with today presence (all signed-in users)',
+        security: [{ bearerAuth: [] }],
+        description:
+          'Returns non-resigned employees with a presence hint: present (checked in today), ' +
+          'leave (approved leave or ON_LEAVE status), or absent.',
+        responses: {
+          200: { description: 'Directory list with presence field' },
+        },
+      },
+    },
     '/api/employees/{id}': {
       parameters: [
         { name: 'id', in: 'path', required: true, schema: { type: 'string' } },

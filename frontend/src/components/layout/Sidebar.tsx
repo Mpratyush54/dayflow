@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/theme-context';
 import { useAuth } from '../../hooks/useAuth';
 import CommandPalette from '../common/CommandPalette';
@@ -33,9 +33,12 @@ function initialsOf(name: string) {
 }
 
 export default function Sidebar({ items, user, commands = [], children }: SidebarProps) {
+  const navigate = useNavigate();
   const { theme, toggle } = useTheme();
   const { user: authUser, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const display = authUser
     ? {
@@ -44,6 +47,24 @@ export default function Sidebar({ items, user, commands = [], children }: Sideba
         initials: initialsOf(authUser.name?.trim() || authUser.email),
       }
     : user;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false);
+    }
+    function onClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [menuOpen]);
 
   return (
     <div className="shell">
@@ -100,15 +121,48 @@ export default function Sidebar({ items, user, commands = [], children }: Sideba
           <span aria-hidden>{theme === 'dark' ? '☀' : '☾'}</span>
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
         </button>
-        <div className="sidebar__user">
-          <span className="avatar avatar--mint">{display.initials}</span>
-          <span>
-            <span className="sidebar__username">{display.name}</span>
-            <span className="sidebar__userrole">{display.role}</span>
-          </span>
-          <button type="button" className="sidebar__signout" onClick={() => void signOut()}>
-            Sign out
+        <div className="sidebar__user" ref={menuRef}>
+          <button
+            type="button"
+            className="sidebar__user-trigger"
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span className="avatar avatar--mint">{display.initials}</span>
+            <span className="sidebar__user-text">
+              <span className="sidebar__username">{display.name}</span>
+              <span className="sidebar__userrole">{display.role}</span>
+            </span>
+            <span className="sidebar__user-caret" aria-hidden>{menuOpen ? '▴' : '▾'}</span>
           </button>
+          {menuOpen && (
+            <div className="sidebar__menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                className="sidebar__menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setMobileOpen(false);
+                  navigate('/profile');
+                }}
+              >
+                My profile
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="sidebar__menu-item sidebar__menu-item--danger"
+                onClick={() => {
+                  setMenuOpen(false);
+                  void signOut();
+                }}
+              >
+                Log out
+              </button>
+            </div>
+          )}
         </div>
       </aside>
       <div className="shell__main">{children}</div>

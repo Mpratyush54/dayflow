@@ -5,6 +5,7 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import CountdownRing from '../../components/common/CountdownRing';
+import EmployeeDirectory from '../../components/common/EmployeeDirectory';
 import Donut from '../../components/charts/Donut';
 import AreaChart from '../../components/charts/AreaChart';
 import Heatmap from '../../components/charts/Heatmap';
@@ -61,6 +62,10 @@ function computeStreak(days: AttendanceDay[] | undefined) {
   return streak;
 }
 
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 function Skeletons() {
   return (
     <div className="bento">
@@ -114,6 +119,12 @@ export default function EmployeeDashboard() {
   const pendingLeaves = data.leaves?.filter(l => l.status === 'PENDING').length ?? 0;
   const recentLeaves = data.leaves?.slice(0, 3) ?? [];
   const loading = data.attendance === null;
+  const checkedIn = Boolean(today?.checkIn);
+  const checkedOut = Boolean(today?.checkOut);
+  const liveHours =
+    checkedIn && !checkedOut && today?.checkIn
+      ? Math.max((now.getTime() - new Date(today.checkIn).getTime()) / 3600000, 0)
+      : 0;
 
   async function handleCheckInOut() {
     if (!today || busy) return;
@@ -121,10 +132,10 @@ export default function EmployeeDashboard() {
     try {
       if (today.checkIn && !today.checkOut) {
         await checkOut();
-        push('Checked out — see you tomorrow');
+        push('Checked out — great work today ✓');
       } else if (!today.checkIn) {
         await checkIn();
-        push('Checked in at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        push('Checked in at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' — have a productive day!');
       }
       await refresh();
     } catch (err) {
@@ -133,9 +144,6 @@ export default function EmployeeDashboard() {
       setBusy(false);
     }
   }
-
-  const checkedIn = Boolean(today?.checkIn);
-  const checkedOut = Boolean(today?.checkOut);
 
   return (
     <Sidebar
@@ -167,24 +175,36 @@ export default function EmployeeDashboard() {
               {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>
             <h1>Good {now.getHours() < 12 ? 'morning' : now.getHours() < 17 ? 'afternoon' : 'evening'},<br /><span className="text-gradient">{firstName}</span></h1>
+            {today && (
+              <p className="ticker" style={{ marginTop: 12 }}>
+                <span
+                  className={`ticker__dot ${checkedIn && !checkedOut ? 'ticker__dot--active' : 'ticker__dot--idle'}`}
+                  aria-hidden
+                />
+                {checkedOut
+                  ? `Day complete · ${today.workedHours}h logged`
+                  : checkedIn
+                    ? `Working since ${fmtTime(today.checkIn!)} · ${liveHours.toFixed(1)}h`
+                    : 'Not checked in yet — tap Check IN when you arrive'}
+              </p>
+            )}
           </div>
           <div className="hero-actions">
             {streak > 1 && <span className="streak">🔥 {streak}-day streak</span>}
-            <Badge tone={checkedIn && !checkedOut ? 'success' : 'neutral'}>
-              {checkedOut ? 'Day complete' : checkedIn ? 'Checked in' : 'Not checked in'}
-            </Badge>
             <Button
               variant={checkedIn && !checkedOut ? 'outline' : 'primary'}
               onClick={handleCheckInOut}
               disabled={busy || loading || checkedOut}
             >
-              {busy ? '…' : checkedOut ? 'Done for today' : checkedIn ? 'Check out' : 'Check in'}
+              {busy ? '…' : checkedOut ? 'Done for today' : checkedIn ? 'Check OUT →' : 'Check IN →'}
             </Button>
           </div>
         </div>
 
         {loading ? <Skeletons /> : (<>
         <div className="bento">
+          <EmployeeDirectory />
+
           <Card className="bento__hero card--grad" heading="Hours this week">
             {hours.some(h => h > 0) ? (
               <>

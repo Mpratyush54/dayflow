@@ -185,7 +185,7 @@ export default function LeaveApprovals() {
               {visible.length > 0 ? (
                 <table className="table">
                   <thead>
-                    <tr><th>Employee</th><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th>Actions</th></tr>
+                    <tr><th>Employee</th><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th>Certificate</th><th>Actions</th></tr>
                   </thead>
                   <tbody>
                     {visible.map((l) => {
@@ -221,6 +221,7 @@ export default function LeaveApprovals() {
                                 </span>
                               )}
                             </td>
+                            <td>{l.attachmentUrl ? <a href={l.attachmentUrl} target="_blank" rel="noreferrer">View</a> : <span className="dash-sub">—</span>}</td>
                             <td>
                               {isPending ? (
                                 <span className="leave-actions" onClick={(e) => e.stopPropagation()}>
@@ -245,8 +246,14 @@ export default function LeaveApprovals() {
                           </tr>
                           {isOpen && l.status === 'PENDING' && (
                             <tr className="row-detail">
-                              <td colSpan={6}>
+                              <td colSpan={7}>
                                 <div className="row-detail__inner">
+                                  {l.attachmentUrl && (
+                                    <div>
+                                      <strong>Certificate</strong>
+                                      <div><a href={l.attachmentUrl} target="_blank" rel="noreferrer">View attachment</a></div>
+                                    </div>
+                                  )}
                                   {l.remarks && (
                                     <div>
                                       <strong>Remarks</strong>
