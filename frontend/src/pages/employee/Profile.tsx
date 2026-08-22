@@ -7,6 +7,7 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { SkeletonCard, SkeletonLine, SkeletonTitle, SkeletonAvatar } from '../../components/common/Skeleton';
+import ProfileCompletionRing, { computeProfileCompletion, missingFields } from '../../components/common/ProfileCompletionRing';
 import { getEmployee, updateEmployee, uploadDocument, deleteDocument } from '../../api/employees';
 import type { EmployeePatch } from '../../api/employees';
 import type { EmployeeProfile, Gender, MaritalStatus } from '../../types';
@@ -487,6 +488,19 @@ export default function Profile() {
                 Edit profile
               </Button>
             )}
+          </Card>
+
+          <Card className="animate-in" style={{ animationDelay: '0.04s' } as React.CSSProperties}>
+            <ProfileCompletionRing
+              value={computeProfileCompletion(profile)}
+              size={100}
+              missing={missingFields(profile)}
+              onCtaClick={() => {
+                if (activeTab !== 'private' && activeTab !== 'resume') {
+                  window.location.href = '/profile?tab=private';
+                } else if (!editing) startEditing();
+              }}
+            />
           </Card>
 
           <nav className="profile-tabs animate-in" aria-label="Profile sections" style={{ animationDelay: '0.06s' }}>

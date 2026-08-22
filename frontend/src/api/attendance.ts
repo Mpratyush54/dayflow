@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, BASE_URL, getAccessToken } from './client';
 import type { AttendanceDay, AttendanceWindow, TeamAttendance } from '../types';
 
 export function getMyAttendance(days = 7, date?: string): Promise<AttendanceWindow> {
@@ -21,4 +21,10 @@ export function checkOut(): Promise<AttendanceDay> {
 
 export function getTeamAttendance(date: string): Promise<TeamAttendance> {
   return api.get<TeamAttendance>(`/attendance/team?date=${encodeURIComponent(date)}`);
+}
+
+export function getAttendanceStreamUrl(): string {
+  const token = getAccessToken();
+  const base = BASE_URL.replace(/\/$/, '');
+  return token ? `${base}/attendance/stream?token=${encodeURIComponent(token)}` : `${base}/attendance/stream`;
 }

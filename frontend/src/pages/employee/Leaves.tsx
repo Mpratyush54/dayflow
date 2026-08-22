@@ -149,15 +149,23 @@ export default function Leaves() {
       .reduce((sum, l) => sum + daysInclusive(l.startDate, l.endDate), 0),
   }));
 
-  const requestedDays = form.startDate && form.endDate
-    ? daysInclusive(form.startDate, form.endDate)
-    : 0;
-
-  const remainingForType = (() => {
-    const entitlement = BALANCE_TOTALS.find((b) => b.type === form.type)?.total ?? 0;
-    const used = usedByType.find((u) => u.type === form.type)?.used ?? 0;
-    return Math.max(entitlement - used, 0);
+  const entitlementForType = BALANCE_TOTALS.find((b) => b.type === form.type)?.total ?? 0;
+  const usedForType = usedByType.find((u) => u.type === form.type)?.used ?? 0;
+  const left = Math.max(entitlementForType - usedForType, 0);
+  const hasValidRange = Boolean(form.startDate && form.endDate && form.endDate >= form.startDate);
+  const requestedDays = hasValidRange ? daysInclusive(form.startDate, form.endDate) : 0;
+  const forecastLeft = hasValidRange ? left - requestedDays : left;
+  const forecastYear = (() => {
+    if (form.startDate) {
+      const y = Number(form.startDate.slice(0, 4));
+      if (Number.isInteger(y) && y >= 2000 && y <= 2100) return y;
+    }
+    return new Date().getFullYear();
   })();
+  const carryForwardHint =
+    form.type === 'PAID'
+      ? 'Carry-forward: up to 5 days'
+      : 'Carry-forward: not applicable for this leave type';
 
   function openModal(prefill?: { startDate: string; endDate?: string }) {
     setFormError('');
@@ -484,25 +492,60 @@ export default function Leaves() {
               <form onSubmit={(e) => void handleSubmit(e)}>
                 <div className="field">
                   <label className="field__label" htmlFor="leave-type">Type</label>
-                  <select id="leave-type" className="input" value={form.type} onChange={set('type')}>
+                  <select id="leave-type" className="input" value={form.type} onChange={set('type')} aria-describedby="leave-forecast-helper">
                     <option value="PAID">Paid leave</option>
                     <option value="SICK">Sick leave</option>
                     <option value="UNPAID">Unpaid leave</option>
                   </select>
                 </div>
-                <Input label="From" type="date" value={form.startDate} onChange={set('startDate')} min={today} />
-                <Input label="To" type="date" value={form.endDate} onChange={set('endDate')} min={form.startDate || today} />
-                {form.startDate && form.endDate && form.endDate >= form.startDate && (
-                  <div className="leave-form-meta">
-                    <span>
-                      Allocation days: <strong>{requestedDays}</strong>
-                    </span>
-                    <span>
-                      {form.type} balance after: <strong>{Math.max(remainingForType - requestedDays, 0)}</strong> of{' '}
-                      {BALANCE_TOTALS.find((b) => b.type === form.type)?.total ?? 0} left
-                    </span>
-                  </div>
-                )}
+                <Input label="From" type="date" value={form.startDate} onChange={set('startDate')} min={today} aria-describedby="leave-forecast-helper" />
+                <Input label="To" type="date" value={form.endDate} onChange={set('endDate')} min={form.startDate || today} aria-describedby="leave-forecast-helper" />
+                {/* Live balance forecast — updates as type/dates change; mirrors server entitlement minus PENDING+APPROVED */}
+                <div
+                  id="leave-forecast-card"
+                  className="leave-forecast animate-in"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  role="status"
+                >
+                  {hasValidRange ? (
+                    <>
+                      <p id="leave-forecast-helper" className="leave-forecast__primary">
+                        If you take <strong>{requestedDays} day{requestedDays === 1 ? '' : 's'}</strong>, you&apos;ll have{' '}
+                        <strong>{Math.max(forecastLeft, 0)} left</strong> in {forecastYear}.
+                        <span className="leave-forecast__badge-wrap">
+                          {forecastLeft < 0 ? (
+                            <Badge tone="error">exceeds balance</Badge>
+                          ) : (
+                            <Badge tone="neutral">{forecastLeft} of {entitlementForType} left</Badge>
+                          )}
+                        </span>
+                      </p>
+                      <p className="leave-forecast__meta dash-sub">
+                        {form.type} · {left} of {entitlementForType} remaining · {requestedDays} requested ·{' '}
+                        <strong>{Math.max(forecastLeft, 0)} after</strong>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p id="leave-forecast-helper" className="leave-forecast__primary leave-forecast__primary--muted">
+                        Select dates to see forecast — <strong>{left} of {entitlementForType}</strong> {form.type} days left in {forecastYear}.
+                        <span className="leave-forecast__badge-wrap">
+                          <Badge tone="neutral">{left} left</Badge>
+                        </span>
+                      </p>
+                      <p className="leave-forecast__meta dash-sub">
+                        Entitlement {entitlementForType} · used {usedForType} (PENDING+APPROVED)
+                      </p>
+                    </>
+                  )}
+                  <p className="leave-forecast__carry">{carryForwardHint}{form.type === 'PAID' ? ' — unused PAID balance may roll over per policy.' : '.'}</p>
+                  {hasValidRange && forecastLeft < 0 && (
+                    <p className="form-error" style={{ marginTop: 'var(--space-xs)', marginBottom: 0 }}>
+                      Insufficient {form.type} balance: {left} left, {requestedDays} requested.
+                    </p>
+                  )}
+                </div>
                 <div className="field">
                   <label className="field__label" htmlFor="leave-remarks">Remarks</label>
                   <textarea

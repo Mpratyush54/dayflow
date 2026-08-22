@@ -8,7 +8,7 @@ import Sparkline from '../../components/charts/Sparkline';
 import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
-import { getTeamAttendance } from '../../api/attendance';
+import { getAttendanceStreamUrl, getTeamAttendance } from '../../api/attendance';
 import type { TeamAttendance } from '../../types';
 import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
 
@@ -75,6 +75,7 @@ export default function AttendanceOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [now, setNow] = useState(() => new Date());
+  const [liveStillIn, setLiveStillIn] = useState<number | null>(null);
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
   const PAGE_SIZE = 10;
   const q = searchParams.get('q') ?? '';
@@ -100,6 +101,59 @@ export default function AttendanceOverview() {
     return () => clearInterval(t);
   }, []);
 
+  // SSE live stillIn with fallback to polling
+  useEffect(() => {
+    let es: EventSource | null = null;
+    let pollId: ReturnType<typeof setInterval> | null = null;
+    let closed = false;
+
+    const startPolling = () => {
+      if (pollId) return;
+      pollId = setInterval(() => { void load(date); }, 5000);
+    };
+
+    const cleanupPolling = () => {
+      if (pollId) { clearInterval(pollId); pollId = null; }
+    };
+
+    // Only subscribe for today's view (historical dates don't need live)
+    if (date !== todayKey()) {
+      setLiveStillIn(null);
+      return () => { cleanupPolling(); };
+    }
+
+    try {
+      if (typeof window === 'undefined' || typeof EventSource === 'undefined') {
+        startPolling();
+        return () => cleanupPolling();
+      }
+      const url = getAttendanceStreamUrl();
+      es = new EventSource(url);
+      es.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data) as { stillIn?: number };
+          if (typeof msg.stillIn === 'number') setLiveStillIn(msg.stillIn);
+        } catch { /* ignore malformed */ }
+      };
+      es.onerror = () => {
+        if (closed) return;
+        // SSE unavailable — close and fallback to polling
+        try { es?.close(); } catch {}
+        es = null;
+        setLiveStillIn(null);
+        startPolling();
+      };
+    } catch {
+      startPolling();
+    }
+
+    return () => {
+      closed = true;
+      if (es) try { es.close(); } catch {}
+      cleanupPolling();
+    };
+  }, [date, load]);
+
   const rows = data?.rows ?? [];
   const filteredRows = useMemo(() => {
     if (!q.trim()) return rows;
@@ -113,8 +167,11 @@ export default function AttendanceOverview() {
   }, [rows, q]);
 
   const present = filteredRows.filter((r) => r.status === 'PRESENT').length;
+  const halfDay = filteredRows.filter((r) => r.status === 'HALF_DAY').length;
+  const absent = filteredRows.filter((r) => r.status === 'ABSENT').length;
   const onLeave = filteredRows.filter((r) => r.status === 'LEAVE').length;
-  const stillIn = filteredRows.filter((r) => r.checkIn && !r.checkOut).length;
+  const stillInBase = filteredRows.filter((r) => r.checkIn && !r.checkOut).length;
+  const stillIn = liveStillIn ?? stillInBase;
   const totalWorkingDays = rows.length > 0 ? rows.length - (data?.isWeekend ? rows.length : 0) : 0;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);

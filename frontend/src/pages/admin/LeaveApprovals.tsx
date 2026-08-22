@@ -313,12 +313,20 @@ export default function LeaveApprovals() {
                   </tbody>
                 </table>
               ) : (
-                <p className="dash-sub">Nothing here — all caught up ✓</p>
+                <div className="empty-state empty-state--card animate-in" role="status" aria-live="polite" aria-label="All caught up">
+                  <div className="empty-state__illustration" aria-hidden>✓</div>
+                  <h3 className="empty-state__title">All caught up ✓</h3>
+                  <p className="empty-state__desc">No pending leave requests at the moment. New submissions will appear here for your review.</p>
+                  <div className="empty-state__actions">
+                    <Button variant="outline" onClick={() => setFilter('ALL')}>View all requests</Button>
+                    <Button variant="outline" onClick={() => setFilter('PENDING')}>Check pending again</Button>
+                  </div>
+                </div>
               )}
               {pagination && visible.length > 0 && (
                 <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />
               )}
-              <p className="dash-sub" style={{ marginTop: 12 }}>Click a pending row to review it</p>
+              {visible.length > 0 && <p className="dash-sub" style={{ marginTop: 12 }}>Click a pending row to review it</p>}
             </Card>
           </>
         )}
