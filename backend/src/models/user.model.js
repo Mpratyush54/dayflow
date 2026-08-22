@@ -52,4 +52,8 @@ userSchema.methods.comparePassword = function comparePassword(candidate) {
 };
 
 const User = mongoose.models.User ?? mongoose.model('User', userSchema);
+
+// Fields safe to expose on employee listings (sensitive fields are excluded by schema + toJSON)
+export const USER_PUBLIC_FIELDS = 'employeeId email role name isVerified createdAt';
+
 export default User;
