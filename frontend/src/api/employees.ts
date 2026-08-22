@@ -1,6 +1,14 @@
 import { api, getAccessToken, refreshAccessToken, ApiError } from './client';
 import type { EmployeeProfile, Role, User } from '../types';
 
+export interface DirectoryEntry extends User {
+  presence: 'present' | 'leave' | 'absent';
+}
+
+export function getEmployeeDirectory() {
+  return api.get<DirectoryEntry[]>('/employees/directory');
+}
+
 export function getEmployee(id: string) {
   return api.get<EmployeeProfile>(`/employees/${id}`);
 }

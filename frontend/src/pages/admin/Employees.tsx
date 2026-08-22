@@ -9,6 +9,8 @@ import Pagination from '../../components/common/Pagination';
 import { createEmployee, listEmployees, updateEmployee } from '../../api/employees';
 import type { CreatedEmployee } from '../../api/employees';
 import type { Role, User } from '../../types';
+import { getTeamAttendance } from '../../api/attendance';
+import type { TeamAttendance } from '../../types';
 import { useToasts } from '../../hooks/useToasts';
 import { ToastStack } from '../../components/common/Toast';
 
@@ -51,6 +53,8 @@ export default function EmployeeList() {
   const [created, setCreated] = useState<CreatedEmployee | null>(null);
   const [employees, setEmployees] = useState<User[] | null>(null);
   const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [teamAttendance, setTeamAttendance] = useState<TeamAttendance | null>(null);
 
   async function handleVerify(e: User) {
     if (verifyingId === e.id) return;
@@ -81,6 +85,11 @@ export default function EmployeeList() {
       })
       .catch(() => setEmployees([]));
   }, [page]);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    getTeamAttendance(today).then(setTeamAttendance).catch(() => setTeamAttendance(null));
+  }, []);
 
   function update(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -177,14 +186,56 @@ export default function EmployeeList() {
                 <h1>Employees</h1>
               </div>
               <div className="hero-actions">
+                <div style={{ display: 'flex', gap: 8, border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-pill)', padding: 4 }}>
+                  <Button variant={viewMode === 'grid' ? 'primary' : 'text'} onClick={() => setViewMode('grid')}>Grid</Button>
+                  <Button variant={viewMode === 'table' ? 'primary' : 'text'} onClick={() => setViewMode('table')}>Table</Button>
+                </div>
                 <Button variant="outline" onClick={() => navigate('/admin')}>Back to overview</Button>
                 <Button onClick={openModal}>＋ Create employee</Button>
               </div>
             </div>
 
-            <Card className="table-card" heading={`All employees${pagination ? ` (${pagination.total})` : employees ? ` (${employees.length})` : ''}`}>
+            <Card className={viewMode === 'grid' ? '' : 'table-card'} heading={`All employees${pagination ? ` (${pagination.total})` : employees ? ` (${employees.length})` : ''}`}>
               {employees.length === 0 ? (
                 <p className="dash-sub">No employees yet — create the first one with the button above.</p>
+              ) : viewMode === 'grid' ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 'var(--space-base)' }}>
+                    {employees.map((e) => {
+                      const row = teamAttendance?.rows.find((r) => r.user.id === e.id);
+                      const status = row?.status;
+                      const dotColor = status === 'PRESENT' ? 'var(--color-success)' : status === 'LEAVE' ? 'var(--color-error)' : status === 'HALF_DAY' ? 'var(--color-gradient-peach)' : '#eab308';
+                      const dotTitle = status === 'PRESENT' ? 'Present today' : status === 'LEAVE' ? 'On leave today' : status === 'HALF_DAY' ? 'Half day' : 'Absent';
+                      return (
+                        <div
+                          key={e.id}
+                          onClick={() => navigate(`/profile?id=${e.id}`)}
+                          style={{ position: 'relative', cursor: 'pointer', background: 'var(--color-surface-card)', border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}
+                        >
+                          <span title={dotTitle} style={{ position: 'absolute', top: 12, right: 12, width: 10, height: 10, borderRadius: '50%', background: dotColor, boxShadow: `0 0 0 3px ${dotColor}33`, display: 'inline-block' }} />
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                            <span className="avatar avatar--lavender" style={{ width: 44, height: 44, fontSize: 14 }}>{initialsOf(e.name || e.email)}</span>
+                            <span>
+                              <span style={{ display: 'block', font: 'var(--type-body-strong)', color: 'var(--color-ink)' }}>{e.name || '—'}</span>
+                              <span className="dash-sub" style={{ display: 'block' }}>{e.employeeId}</span>
+                            </span>
+                          </span>
+                          <span className="dash-sub" style={{ fontSize: 13, color: 'var(--color-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.email}</span>
+                          <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Badge>{e.role}</Badge>
+                            <Badge tone={e.isVerified ? 'success' : 'neutral'}>{e.isVerified ? 'Verified' : 'Pending'}</Badge>
+                          </span>
+                          <span className="dash-sub">{e.department || e.designation ? `${e.designation || ''}${e.designation && e.department ? ' · ' : ''}${e.department || ''}` : '—'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {pagination && (
+                    <div style={{ marginTop: 'var(--space-lg)' }}>
+                      <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />
+                    </div>
+                  )}
+                </>
               ) : (
             <>
               <table className="table">

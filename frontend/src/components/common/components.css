@@ -121,6 +121,7 @@
   border: 1px solid var(--color-hairline-soft);
   border-radius: var(--radius-xl);
   padding: var(--space-lg);
+  overflow: visible;
 }
 
 .card__heading {
@@ -288,5 +289,63 @@ textarea.input {
   .skeleton-grid-2 {
     grid-template-columns: 1fr;
   }
+}
+
+/* Dialog / modal */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: rgba(12, 10, 9, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  position: relative;
+  z-index: 1;
+}
+
+.dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-base);
+}
+
+.dialog__title {
+  font: var(--type-title-md);
+  margin: 0;
+}
+
+.dialog__close {
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: var(--space-xxs);
+  border-radius: var(--radius-sm);
+  line-height: 1;
+}
+
+.dialog__close:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-strong);
+}
+
+.dialog__body {
+  font: var(--type-body-md);
+  color: var(--color-body);
 }
 

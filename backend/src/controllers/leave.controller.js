@@ -1,9 +1,16 @@
 import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import LeaveRequest from '../models/leave.model.js';
 import User from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { notifyLeaveDecision, notifyNewLeaveRequest } from '../utils/mailer.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
 
 const LEAVE_TYPES = ['PAID', 'SICK', 'UNPAID'];
 const LEAVE_ENTITLEMENTS = { PAID: 18, SICK: 10, UNPAID: 5 };
@@ -28,10 +35,13 @@ function parseDate(value, field) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
-// POST /api/leaves — apply for leave (type, date range, remarks)
+// POST /api/leaves — apply for leave (type, date range, remarks, attachment for sick)
 export async function applyLeave(req, res) {
   const { type, startDate, endDate, remarks } = req.body;
-
+  const cleanupFile = () => {
+    if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
+  };
+  try {
   if (!LEAVE_TYPES.includes(type)) {
     throw new HttpError(400, 'Leave type must be PAID, SICK or UNPAID', 'VALIDATION_ERROR');
   }
@@ -84,12 +94,18 @@ export async function applyLeave(req, res) {
     }
   }
 
+  let attachmentUrl;
+  if (req.file) {
+    attachmentUrl = `/uploads/${req.file.filename}`;
+  }
+
   const leave = await LeaveRequest.create({
     userId: req.user.id,
     type,
     startDate: start,
     endDate: end,
     remarks: typeof remarks === 'string' ? remarks : undefined,
+    attachmentUrl,
   });
 
   // Fire-and-forget: notify HR/ADMIN approvers; mailer problems never break the request
@@ -99,6 +115,10 @@ export async function applyLeave(req, res) {
     .catch((err) => console.error(`[mailer] new-leave notification failed: ${err.message}`));
 
   res.status(201).json(leave);
+  } catch (err) {
+    cleanupFile();
+    throw err;
+  }
 }
 
 // GET /api/leaves — own leave requests (?page=&limit=)
