@@ -76,6 +76,36 @@ const userSchema = new mongoose.Schema(
     address: { type: String, trim: true },
     dateOfBirth: { type: Date },
     profilePicture: { type: String }, // URL or data-URI string
+    nationality: { type: String, trim: true },
+    personalEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      validate: {
+        validator(value) {
+          return !value || /^\S+@\S+\.\S+$/.test(value);
+        },
+        message: 'Invalid personal email address',
+      },
+    },
+    gender: {
+      type: String,
+      enum: ['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY', ''],
+      default: '',
+    },
+    maritalStatus: {
+      type: String,
+      enum: ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED', 'OTHER', ''],
+      default: '',
+    },
+
+    // Bank & statutory (private info)
+    bankAccountNo: { type: String, trim: true },
+    bankName: { type: String, trim: true },
+    ifsc: { type: String, trim: true, uppercase: true },
+    pan: { type: String, trim: true, uppercase: true },
+    uan: { type: String, trim: true },
+    empCode: { type: String, trim: true },
 
     // Job details
     designation: { type: String, trim: true },

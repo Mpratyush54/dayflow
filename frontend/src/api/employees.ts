@@ -23,6 +23,16 @@ export type EmployeePatch = Partial<
     | 'designation'
     | 'department'
     | 'workLocation'
+    | 'nationality'
+    | 'personalEmail'
+    | 'gender'
+    | 'maritalStatus'
+    | 'bankAccountNo'
+    | 'bankName'
+    | 'ifsc'
+    | 'pan'
+    | 'uan'
+    | 'empCode'
   > & {
     dateOfBirth?: string;
     dateOfJoining?: string;

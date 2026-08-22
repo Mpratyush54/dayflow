@@ -10,6 +10,7 @@ import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
 import { getTeamAttendance } from '../../api/attendance';
 import type { TeamAttendance } from '../../types';
+import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
 
 function Skeletons() {
   return (
@@ -40,6 +41,7 @@ export default function AttendanceOverview() {
   const [data, setData] = useState<TeamAttendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [now, setNow] = useState(() => new Date());
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
   const PAGE_SIZE = 10;
 
@@ -59,6 +61,11 @@ export default function AttendanceOverview() {
     void load(date);
   }, [date, load]);
 
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   const rows = data?.rows ?? [];
   const present = rows.filter((r) => r.status === 'PRESENT').length;
   const halfDay = rows.filter((r) => r.status === 'HALF_DAY').length;
@@ -68,6 +75,7 @@ export default function AttendanceOverview() {
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginatedRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const isToday = date === todayKey();
 
   return (
     <Sidebar
@@ -167,11 +175,16 @@ export default function AttendanceOverview() {
                             <th>Checked in</th>
                             <th>Checked out</th>
                             <th>Hours</th>
+                            <th>Work hours</th>
+                            <th>Extra hours</th>
                             <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {paginatedRows.map((r) => (
+                          {paginatedRows.map((r) => {
+                          const live = r.checkIn ? liveHoursFromCheckIn(r.checkIn, now) : 0;
+                          const total = totalLoggedHours(r.workedHours, r.checkIn, r.checkOut, isToday, live);
+                          return (
                           <tr key={r.user.id} className="animate-in">
                             <td>
                               <span className="sidebar__username">{r.user.name?.trim() || r.user.email}</span>{' '}
@@ -180,7 +193,9 @@ export default function AttendanceOverview() {
                             <td>{r.user.role}</td>
                             <td className="table-mono">{fmtTime(r.checkIn)}</td>
                             <td className="table-mono">{fmtTime(r.checkOut)}</td>
-                            <td className="table-mono">{r.checkOut ? `${r.workedHours.toFixed(1)}h` : '—'}</td>
+                            <td className="table-mono">{fmtHours(total)}</td>
+                            <td className="table-mono">{total !== null ? fmtHours(workHours(total)) : '—'}</td>
+                            <td className="table-mono">{total !== null ? fmtHours(extraHours(total)) : '—'}</td>
                             <td>
                               {r.status === 'PRESENT' && <Badge tone="success">Present</Badge>}
                               {r.status === 'HALF_DAY' && <Badge tone="neutral">Half day</Badge>}
@@ -190,7 +205,8 @@ export default function AttendanceOverview() {
                                 : <Badge tone="error">Absent</Badge>)}
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

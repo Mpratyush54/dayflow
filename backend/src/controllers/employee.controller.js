@@ -20,7 +20,20 @@ const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
 const SALT_ROUNDS = 12;
 
 // Fields an EMPLOYEE may change on their own profile (SRS 3.3.2)
-const SELF_EDITABLE_FIELDS = ['phone', 'address', 'profilePicture'];
+const SELF_EDITABLE_FIELDS = [
+  'phone',
+  'address',
+  'profilePicture',
+  'nationality',
+  'personalEmail',
+  'gender',
+  'maritalStatus',
+  'bankAccountNo',
+  'bankName',
+  'ifsc',
+  'pan',
+  'uan',
+];
 
 const PHONE_RE = /^\+?[0-9]{10,15}$/;
 function normalizePhone(value) {
@@ -204,6 +217,16 @@ export async function updateEmployee(req, res, next) {
           'workLocation',
           'status',
           'isVerified',
+          'nationality',
+          'personalEmail',
+          'gender',
+          'maritalStatus',
+          'bankAccountNo',
+          'bankName',
+          'ifsc',
+          'pan',
+          'uan',
+          'empCode',
           'salary',
           'documents',
         ];
@@ -211,6 +234,10 @@ export async function updateEmployee(req, res, next) {
     const updates = {};
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
+    if (updates.personalEmail !== undefined && String(updates.personalEmail).trim() === '') {
+      updates.personalEmail = '';
     }
 
     // Phone validation — reject before DB write (client also validates)

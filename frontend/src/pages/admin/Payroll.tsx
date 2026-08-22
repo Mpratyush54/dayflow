@@ -10,6 +10,7 @@ import Donut from '../../components/charts/Donut';
 import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
+import { useNotifications } from '../../hooks/useNotifications';
 import { useDelayedReady } from '../../hooks/useDelayedReady';
 import { getAllPayroll, updatePayroll, downloadPayslip } from '../../api/payroll';
 import type { PayrollStructureInput } from '../../api/payroll';
@@ -84,6 +85,7 @@ export default function PayrollAdmin() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
   const { toasts, push } = useToasts();
+  const { pushNotification } = useNotifications();
   const [records, setRecords] = useState<Payroll[] | null>(null);
   const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null);
   const [employees, setEmployees] = useState<User[]>([]);
@@ -177,6 +179,15 @@ export default function PayrollAdmin() {
       const updated = await updatePayroll(edit.userId, input);
       const who = employeeOf(updated);
       push(`Salary structure saved for ${who.name || who.email || who.id}`);
+      pushNotification(
+        {
+          kind: 'payroll-ready',
+          title: 'Payroll updated',
+          message: `Salary structure saved for ${who.name || who.email || who.id}`,
+          href: '/admin/payroll',
+        },
+        { dedupeKey: `payroll-saved-${edit.userId}-${Date.now()}` },
+      );
       setEdit(null);
       await load();
     } catch (err) {
