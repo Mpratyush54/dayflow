@@ -69,11 +69,17 @@ export default function Leaves() {
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
   }
 
+  const todayISO = new Date().toISOString().slice(0, 10);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setFormError('');
     if (!form.startDate || !form.endDate) {
       setFormError('Pick a start and end date');
+      return;
+    }
+    if (form.startDate < todayISO) {
+      setFormError('Start date cannot be in the past');
       return;
     }
     if (form.endDate < form.startDate) {
@@ -144,8 +150,8 @@ export default function Leaves() {
                       <option value="UNPAID">Unpaid leave</option>
                     </select>
                   </div>
-                  <Input label="From" type="date" value={form.startDate} onChange={set('startDate')} />
-                  <Input label="To" type="date" value={form.endDate} onChange={set('endDate')} />
+                  <Input label="From" type="date" value={form.startDate} onChange={set('startDate')} min={todayISO} />
+                  <Input label="To" type="date" value={form.endDate} onChange={set('endDate')} min={form.startDate || todayISO} />
                   <div className="field">
                     <label className="field__label" htmlFor="leave-remarks">Remarks</label>
                     <textarea

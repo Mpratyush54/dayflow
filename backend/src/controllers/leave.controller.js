@@ -34,6 +34,11 @@ export async function applyLeave(req, res) {
   if (end < start) {
     throw new HttpError(400, 'endDate cannot be before startDate', 'VALIDATION_ERROR');
   }
+  const now = new Date();
+  const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  if (start < todayUTC) {
+    throw new HttpError(400, 'startDate cannot be in the past', 'VALIDATION_ERROR');
+  }
 
   // Reject overlapping PENDING/APPROVED leave for the same user
   const overlap = await LeaveRequest.exists({
