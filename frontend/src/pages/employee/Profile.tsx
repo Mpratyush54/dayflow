@@ -12,6 +12,17 @@ import './Profile.css';
 
 const MAX_IMAGE_BYTES = 1024 * 1024;
 
+const PHONE_RE = /^\+?[0-9]{10,15}$/;
+
+function normalizePhone(value: string) {
+  return value.replace(/[\s\-()]/g, '');
+}
+
+function isValidPhone(value: string) {
+  if (!value.trim()) return true; // optional
+  return PHONE_RE.test(normalizePhone(value));
+}
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   INR: '₹',
   USD: '$',
@@ -144,10 +155,16 @@ export default function Profile() {
     e.preventDefault();
     if (!profile || !form) return;
 
+    if (!isValidPhone(form.phone)) {
+      setSaveError('Phone must be 10–15 digits, optional leading + (e.g. +919876543210)');
+      return;
+    }
+
     // Employees may only change these three fields (SRS 3.3.2); admins may also
     // edit the job-detail fields below.
+    const normalizedPhone = form.phone.trim() ? normalizePhone(form.phone) : '';
     const patch: EmployeePatch = {
-      phone: form.phone,
+      phone: normalizedPhone,
       address: form.address,
       profilePicture: form.profilePicture,
     };
@@ -260,7 +277,12 @@ export default function Profile() {
               )}
             </div>
 
-            <Input label="Phone" value={form.phone} onChange={set('phone')} placeholder="+91 …" />
+            <Input label="Phone" value={form.phone} onChange={set('phone')} placeholder="+91 …" aria-invalid={form.phone ? !isValidPhone(form.phone) : undefined} />
+            {form.phone.trim() && !isValidPhone(form.phone) && (
+              <p className="form-error" style={{ marginTop: '-8px', marginBottom: '12px' }}>
+                Invalid phone — use 10–15 digits, optional leading + (e.g. +919876543210)
+              </p>
+            )}
             <Input label="Address" value={form.address} onChange={set('address')} />
 
             {isAdmin && (
@@ -276,7 +298,7 @@ export default function Profile() {
 
             {saveError && <p className="form-error">{saveError}</p>}
             <div className="profile-form-actions">
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || (!!form.phone.trim() && !isValidPhone(form.phone))}>
                 {saving ? 'Saving…' : 'Save changes'}
               </Button>
               <Button variant="text" type="button" onClick={cancelEditing} disabled={saving}>

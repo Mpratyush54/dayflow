@@ -42,23 +42,3 @@ export function createEmployee(input: { firstName: string; lastName: string; ema
 export function listEmployees() {
   return api.get<User[]>('/employees');
 }
-
-export type EmployeePatch = Partial<
-  Pick<
-    EmployeeProfile,
-    | 'name'
-    | 'phone'
-    | 'address'
-    | 'profilePicture'
-    | 'designation'
-    | 'department'
-    | 'workLocation'
-  > & {
-    dateOfBirth?: string;
-    dateOfJoining?: string;
-  }
->;
-
-export function updateEmployee(id: string, patch: EmployeePatch) {
-  return api.patch<EmployeeProfile>(`/employees/${id}`, patch);
-}
