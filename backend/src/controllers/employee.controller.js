@@ -1,4 +1,7 @@
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import User, { USER_PUBLIC_FIELDS } from '../models/user.model.js';
 import { env } from '../config/env.js';
 import { createEmployeeSchema } from '../utils/validation.js';
@@ -6,6 +9,10 @@ import { generateVerificationToken } from '../utils/tokens.js';
 import { nextEmployeeId } from '../utils/employeeId.js';
 import { generatePassword } from '../utils/password.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
 
 const SALT_ROUNDS = 12;
 
@@ -196,6 +203,73 @@ export async function updateEmployee(req, res, next) {
     }
 
     res.json(employee);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/employees/:id/documents — upload ID proof / PDF / image (≤5MB, PDF/JPG/PNG)
+export async function uploadDocument(req, res, next) {
+  try {
+    const { id } = req.params;
+    const isAdmin = req.user.role === 'ADMIN';
+    const isSelf = req.user.id === id;
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({ message: 'Only self or ADMIN can upload documents' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded. Field name must be \"file\" (PDF/JPG/PNG, ≤5MB)', code: 'VALIDATION_ERROR' });
+    }
+
+    const allowedMime = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedMime.includes(req.file.mimetype)) {
+      // remove rejected file
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({ message: 'Only PDF, JPG, PNG allowed', code: 'VALIDATION_ERROR' });
+    }
+
+    const employee = await User.findById(id);
+    if (!employee) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Build public URL — served via GET /uploads/<file> (app.js static)
+    const url = `/uploads/${req.file.filename}`;
+    const docName = req.body.name?.trim() || req.file.originalname;
+    employee.documents.push({ name: docName, url, uploadedAt: new Date() });
+    await employee.save();
+    const added = employee.documents[employee.documents.length - 1];
+    res.status(201).json(added);
+  } catch (err) {
+    // cleanup file on error
+    if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
+    next(err);
+  }
+}
+
+// DELETE /api/employees/:id/documents/:docId — remove a document and its file
+export async function deleteDocument(req, res, next) {
+  try {
+    const { id, docId } = req.params;
+    const isAdmin = req.user.role === 'ADMIN';
+    const isSelf = req.user.id === id;
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({ message: 'Only self or ADMIN can delete documents' });
+    }
+    const employee = await User.findById(id);
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    const doc = employee.documents.id(docId);
+    if (!doc) return res.status(404).json({ message: 'Document not found' });
+
+    // try to remove file from uploads dir if it lives there
+    if (doc.url?.startsWith('/uploads/')) {
+      const filePath = path.join(UPLOAD_DIR, path.basename(doc.url));
+      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
+    }
+    doc.deleteOne();
+    await employee.save();
+    res.json({ message: 'Document deleted' });
   } catch (err) {
     next(err);
   }
