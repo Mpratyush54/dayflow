@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 import LeaveRequest from '../models/leave.model.js';
+import User from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { markLeaveInAttendance } from '../services/attendance.service.js';
+import { notifyLeaveDecision, notifyNewLeaveRequest } from '../utils/mailer.js';
 
 const LEAVE_TYPES = ['PAID', 'SICK', 'UNPAID'];
 
@@ -56,6 +58,12 @@ export async function applyLeave(req, res) {
     endDate: end,
     remarks: typeof remarks === 'string' ? remarks : undefined,
   });
+
+  // Fire-and-forget: notify HR/ADMIN approvers; mailer problems never break the request
+  User.find({ role: { $in: ['HR', 'ADMIN'] } })
+    .select('name email')
+    .then((approvers) => notifyNewLeaveRequest(req.user, leave, approvers))
+    .catch((err) => console.error(`[mailer] new-leave notification failed: ${err.message}`));
 
   res.status(201).json(leave);
 }
@@ -123,5 +131,9 @@ export async function reviewLeave(req, res) {
     'userId',
     'employeeId email name role',
   );
+
+  // Fire-and-forget: notify the applicant of the decision (never throws)
+  void notifyLeaveDecision(populated.userId, populated);
+
   res.json(populated);
 }
