@@ -79,7 +79,7 @@ export default function Reports() {
     <Sidebar
       user={{ name: 'HR', role: 'HR · Admin', initials: '··' }}
       items={[
-        { to: '/admin', label: 'Overview', icon: '◧' },
+        { to: '/admin', label: 'Overview', icon: '◧', end: true },
         { to: '/admin/employees', label: 'Employees', icon: '👥' },
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓' },
@@ -146,7 +146,7 @@ export default function Reports() {
                 <span className="stat-xl">{money(data.payroll.net)}</span>
                 <span className="stat-label">Net payroll · {monthLabel(month)}</span>
               </Card>
-              <Card className="bento__mid card--tint-lavender">
+              <Card className="bento__mid card--tint-lavender donut-card">
                 <Donut
                   value={data.headcount.total === 0 ? 0 : Math.round((data.headcount.active / data.headcount.total) * 100)}
                   label="Active"

@@ -45,7 +45,11 @@ function Skeletons() {
       <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line" /></div>
       <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line" /></div>
       <div className="skeleton-card bento__hero"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
-      <div className="skeleton-card bento__tall"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line" /></div>
+      <div className="skeleton-card bento__tall donut-card">
+        <div className="skeleton-avatar" style={{ width: 120, height: 120 }} />
+        <div className="skeleton-line" style={{ width: '60%', marginTop: 16 }} />
+        <div className="skeleton-line" style={{ width: '40%', marginTop: 8 }} />
+      </div>
     </div>
   );
 }
@@ -108,6 +112,7 @@ export default function AdminDashboard() {
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓', badge: (data.pending?.length ?? 0) > 0 ? String(data.pending!.length) : undefined },
         { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
+        { to: '/admin/reports', label: 'Reports', icon: '📊' },
       ]}
       commands={[
         { label: 'Overview', hint: 'page', to: '/admin' },
@@ -115,6 +120,7 @@ export default function AdminDashboard() {
         { label: 'Attendance', hint: 'page', to: '/admin/attendance' },
         { label: 'Leave approvals', hint: 'page', to: '/admin/approvals' },
         { label: 'Payroll', hint: 'page', to: '/admin/payroll' },
+        { label: 'Reports & analytics', hint: 'page', to: '/admin/reports' },
         { label: 'Create employee', hint: 'action', to: '/admin/employees' },
       ]}
     >
@@ -180,7 +186,7 @@ export default function AdminDashboard() {
             )}
           </Card>
 
-          <Card className="bento__tall card--tint-lavender">
+          <Card className="bento__tall card--tint-lavender donut-card">
             <Donut
               value={payrollRate}
               label="Payroll set up"

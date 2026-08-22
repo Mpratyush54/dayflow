@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTheme } from '../context/theme-context';
 import './Landing.css';
 
 const features = [
@@ -47,12 +48,20 @@ const steps = [
 ];
 
 export default function Landing() {
+  const { theme } = useTheme();
+
   return (
     <div className="landing">
       {/* NAV */}
       <nav className="landing-nav">
         <div className="landing-nav__inner">
-          <Link to="/" className="landing-nav__brand">DayFlow</Link>
+          <Link to="/" className="landing-nav__brand">
+            <img
+              src={theme === 'dark' ? '/logo-black.jpeg' : '/logo-light.jpeg'}
+              alt="DayFlow"
+              className="landing-nav__logo-img"
+            />
+          </Link>
           <div className="landing-nav__links">
             <a href="#features">Features</a>
             <a href="#how">How it works</a>
@@ -239,7 +248,13 @@ export default function Landing() {
       <footer className="landing-footer">
         <div className="landing-footer__inner">
           <div>
-            <span className="landing-footer__brand">DayFlow</span>
+            <span className="landing-footer__brand">
+              <img
+                src={theme === 'dark' ? '/logo-black.jpeg' : '/logo-light.jpeg'}
+                alt="DayFlow"
+                className="landing-footer__logo-img"
+              />
+            </span>
             <p>Human Resource Management System — attendance, leave, payroll, and the calm between.</p>
           </div>
           <div className="landing-footer__cols">

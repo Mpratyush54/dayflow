@@ -34,7 +34,9 @@ export function updatePayroll(userId: string, input: PayrollStructureInput) {
   return api.patch<Payroll>(`/payroll/${userId}`, input);
 }
 
-export async function downloadPayslip(month: string) {
-  const { blob, filename } = await download(`/payroll/slip?month=${encodeURIComponent(month)}`);
+export async function downloadPayslip(month: string, userId?: string) {
+  const qs = new URLSearchParams({ month });
+  if (userId) qs.set('userId', userId);
+  const { blob, filename } = await download(`/payroll/slip?${qs.toString()}`);
   saveBlob(blob, filename);
 }

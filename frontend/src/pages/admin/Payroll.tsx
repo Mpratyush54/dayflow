@@ -11,10 +11,28 @@ import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
 import { useDelayedReady } from '../../hooks/useDelayedReady';
-import { getAllPayroll, updatePayroll } from '../../api/payroll';
+import { getAllPayroll, updatePayroll, downloadPayslip } from '../../api/payroll';
 import type { PayrollStructureInput } from '../../api/payroll';
 import { listEmployees } from '../../api/employees';
 import type { Payroll, User } from '../../types';
+
+function formatMonthName(monthKey: string) {
+  const [y, m] = monthKey.split('-').map(Number);
+  if (!y || !m) return monthKey;
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function getRecentMonths(count = 6) {
+  const result: { key: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    result.push({ key, label: i === 0 ? `${label} (Current)` : label });
+  }
+  return result;
+}
 
 const AVATAR_TONES = ['mint', 'peach', 'lavender', 'sky'];
 
@@ -72,6 +90,25 @@ export default function PayrollAdmin() {
   const [loadError, setLoadError] = useState('');
   const [edit, setEdit] = useState<EditState | null>(null);
   const [saving, setSaving] = useState(false);
+  // per-employee month-selection for payslip download
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const [slipMonth, setSlipMonth] = useState<Record<string, string>>({});
+  const [downloadingFor, setDownloadingFor] = useState<string | null>(null);
+  const recentMonths = getRecentMonths(6);
+
+  async function handleDownloadSlip(userId: string) {
+    const m = slipMonth[userId] ?? currentMonth;
+    setDownloadingFor(userId);
+    try {
+      await downloadPayslip(m, userId);
+      push(`Payslip for ${formatMonthName(m)} downloaded`);
+    } catch (err) {
+      push(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloadingFor(null);
+    }
+  }
 
   async function load(p = page) {
     try {
@@ -158,6 +195,7 @@ export default function PayrollAdmin() {
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓' },
         { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
+        { to: '/admin/reports', label: 'Reports', icon: '📊' },
       ]}
       commands={[
         { label: 'Overview', hint: 'page', to: '/admin' },
@@ -165,6 +203,7 @@ export default function PayrollAdmin() {
         { label: 'Attendance', hint: 'page', to: '/admin/attendance' },
         { label: 'Leave approvals', hint: 'page', to: '/admin/approvals' },
         { label: 'Payroll', hint: 'page', to: '/admin/payroll' },
+        { label: 'Reports & analytics', hint: 'page', to: '/admin/reports' },
       ]}
     >
       <div className="container page">
@@ -172,9 +211,39 @@ export default function PayrollAdmin() {
         <ToastStack toasts={toasts} />
 
         {!ready ? (
-          <div className="bento">
-            <div className="skeleton-card bento__wide"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
-          </div>
+          <>
+            <div className="dash-head">
+              <div>
+                <div className="skeleton-line" style={{ width: '100px', height: '13px' }} />
+                <div className="skeleton-line skeleton-line--title" style={{ marginTop: 10, width: '170px', height: '36px' }} />
+              </div>
+            </div>
+            <div className="bento">
+              {/* Donut card placeholder */}
+              <div className="skeleton-card bento__mid" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                <div className="skeleton-avatar" style={{ width: 120, height: 120 }} />
+                <div className="skeleton-line" style={{ width: '60%' }} />
+                <div className="skeleton-line" style={{ width: '40%' }} />
+              </div>
+              {/* Table skeleton */}
+              <div className="skeleton-card bento__wide">
+                <div className="skeleton-line skeleton-line--title" style={{ width: '35%', marginBottom: 20 }} />
+                {[95, 80, 88, 72, 85].map((_, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 14, alignItems: 'center', opacity: 1 - i * 0.14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '22%' }}>
+                      <div className="skeleton-avatar" style={{ width: 32, height: 32 }} />
+                      <div className="skeleton-line" style={{ flex: 1 }} />
+                    </div>
+                    <div className="skeleton-line" style={{ width: '14%' }} />
+                    <div className="skeleton-line" style={{ width: '13%' }} />
+                    <div className="skeleton-line" style={{ width: '13%' }} />
+                    <div className="skeleton-line" style={{ width: '15%', borderRadius: '999px' }} />
+                    <div className="skeleton-line" style={{ width: '10%' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         ) : loadError ? (
           <p className="dash-sub">{loadError}</p>
         ) : (
@@ -187,7 +256,7 @@ export default function PayrollAdmin() {
             </div>
 
             <div className="bento">
-              <Card className="bento__tall card--tint-lavender">
+              <Card className="bento__tall card--tint-lavender donut-card">
                 <Donut
                   value={processedPercent}
                   label="Payroll processed"
@@ -291,6 +360,37 @@ export default function PayrollAdmin() {
                                         {saving ? 'Saving…' : 'Save structure'}
                                       </Button>
                                     </span>
+                                  </div>
+                                  <div style={{ borderTop: '1px solid var(--color-hairline)', paddingTop: 'var(--space-base)', marginTop: 'var(--space-base)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+                                    <span className="dash-sub" style={{ flexShrink: 0 }}>Download payslip</span>
+                                    <select
+                                      className="input"
+                                      style={{ width: 'auto', height: 'var(--button-height)', minWidth: 160 }}
+                                      value={slipMonth[who.id] ?? currentMonth}
+                                      onChange={(e) => setSlipMonth((prev) => ({ ...prev, [who.id]: e.target.value }))}
+                                      aria-label="Select payslip month"
+                                    >
+                                      {recentMonths.map((m) => (
+                                        <option key={m.key} value={m.key}>{m.label}</option>
+                                      ))}
+                                    </select>
+                                    <input
+                                      type="month"
+                                      className="input"
+                                      style={{ width: 'auto', height: 'var(--button-height)' }}
+                                      value={slipMonth[who.id] ?? currentMonth}
+                                      max={currentMonth}
+                                      onChange={(e) => setSlipMonth((prev) => ({ ...prev, [who.id]: e.target.value }))}
+                                      aria-label="Custom month"
+                                      title="Or pick a custom month"
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      disabled={downloadingFor === who.id}
+                                      onClick={() => void handleDownloadSlip(who.id)}
+                                    >
+                                      {downloadingFor === who.id ? 'Downloading…' : `Download PDF`}
+                                    </Button>
                                   </div>
                                 </td>
                               </tr>

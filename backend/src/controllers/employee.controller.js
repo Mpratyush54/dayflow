@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
@@ -110,6 +111,9 @@ export async function listEmployees(req, res, next) {
 export async function getEmployee(req, res, next) {
   try {
     const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
     if (!canViewProfile(req.user, id)) {
       return res.status(403).json({ message: 'You can only view your own profile' });
     }
@@ -125,21 +129,24 @@ export async function getEmployee(req, res, next) {
 }
 
 // PATCH /api/employees/:id — edit profile
-// Employees edit limited fields on their own profile; ADMIN edits all fields.
+// Employees edit limited fields on their own profile; HR/ADMIN edit all fields.
 export async function updateEmployee(req, res, next) {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.role === 'ADMIN';
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+    const isStaff = req.user.role === 'ADMIN' || req.user.role === 'HR';
     const isSelf = req.user.id === id;
 
-    if (!isSelf && !isAdmin) {
+    if (!isSelf && !isStaff) {
       return res
         .status(403)
-        .json({ message: 'Only admins can edit other employees' });
+        .json({ message: 'Only HR and admins can edit other employees' });
     }
 
     // Pick only allowed keys from the request body
-    const allowedFields = isSelf && !isAdmin
+    const allowedFields = isSelf && !isStaff
       ? SELF_EDITABLE_FIELDS
       : [
           ...SELF_EDITABLE_FIELDS,
@@ -151,6 +158,7 @@ export async function updateEmployee(req, res, next) {
           'dateOfJoining',
           'workLocation',
           'status',
+          'isVerified',
           'salary',
           'documents',
         ];
@@ -177,7 +185,7 @@ export async function updateEmployee(req, res, next) {
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
         message:
-          isSelf && !isAdmin
+          isSelf && !isStaff
             ? `Employees may only update: ${SELF_EDITABLE_FIELDS.join(', ')}`
             : 'No valid fields to update',
       });
@@ -212,13 +220,16 @@ export async function updateEmployee(req, res, next) {
 export async function uploadDocument(req, res, next) {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.role === 'ADMIN';
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+    const isStaff = req.user.role === 'ADMIN' || req.user.role === 'HR';
     const isSelf = req.user.id === id;
-    if (!isSelf && !isAdmin) {
-      return res.status(403).json({ message: 'Only self or ADMIN can upload documents' });
+    if (!isSelf && !isStaff) {
+      return res.status(403).json({ message: 'Only self, HR or ADMIN can upload documents' });
     }
     if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded. Field name must be \"file\" (PDF/JPG/PNG, ≤5MB)', code: 'VALIDATION_ERROR' });
+      return res.status(400).json({ message: 'No file uploaded. Field name must be "file" (PDF/JPG/PNG, ≤5MB)', code: 'VALIDATION_ERROR' });
     }
 
     const allowedMime = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -252,10 +263,13 @@ export async function uploadDocument(req, res, next) {
 export async function deleteDocument(req, res, next) {
   try {
     const { id, docId } = req.params;
-    const isAdmin = req.user.role === 'ADMIN';
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+    const isStaff = req.user.role === 'ADMIN' || req.user.role === 'HR';
     const isSelf = req.user.id === id;
-    if (!isSelf && !isAdmin) {
-      return res.status(403).json({ message: 'Only self or ADMIN can delete documents' });
+    if (!isSelf && !isStaff) {
+      return res.status(403).json({ message: 'Only self, HR or ADMIN can delete documents' });
     }
     const employee = await User.findById(id);
     if (!employee) return res.status(404).json({ message: 'Employee not found' });

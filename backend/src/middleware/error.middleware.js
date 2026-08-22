@@ -6,7 +6,11 @@ export function errorHandler(err, _req, res, _next) {
   let message = err.message || 'Internal server error';
   let code = err.code;
 
-  if (err.name === 'ZodError') {
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    status = 413;
+    code = 'PAYLOAD_TOO_LARGE';
+    message = 'Request payload is too large';
+  } else if (err.name === 'ZodError') {
     status = 400;
     code = 'VALIDATION_ERROR';
     message = err.issues?.[0]?.message ?? 'Invalid input';

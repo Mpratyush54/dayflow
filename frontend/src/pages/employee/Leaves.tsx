@@ -131,11 +131,54 @@ export default function Leaves() {
         <ToastStack toasts={toasts} />
 
         {!ready ? (
-          <div className="bento">
-            <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
-            <div className="skeleton-card bento__mid"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line" /></div>
-            <div className="skeleton-card bento__wide"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
-          </div>
+          <>
+            <div className="dash-head">
+              <div>
+                <div className="skeleton-line" style={{ width: '120px', height: '14px' }} />
+                <div className="skeleton-line skeleton-line--title" style={{ marginTop: 10, width: '200px', height: '36px' }} />
+              </div>
+            </div>
+            <div className="bento">
+              {/* Leave balance cards × 3 */}
+              <div className="skeleton-card bento__mid">
+                <div className="skeleton-line skeleton-line--title" style={{ width: '55%' }} />
+                <div className="skeleton-line" style={{ width: '35%', height: '32px', marginTop: 12 }} />
+                <div className="skeleton-line" style={{ width: '70%', marginTop: 8 }} />
+              </div>
+              <div className="skeleton-card bento__mid">
+                <div className="skeleton-line skeleton-line--title" style={{ width: '45%' }} />
+                <div className="skeleton-line" style={{ width: '30%', height: '32px', marginTop: 12 }} />
+                <div className="skeleton-line" style={{ width: '65%', marginTop: 8 }} />
+              </div>
+              <div className="skeleton-card bento__mid">
+                <div className="skeleton-line skeleton-line--title" style={{ width: '50%' }} />
+                <div className="skeleton-line" style={{ width: '40%', height: '32px', marginTop: 12 }} />
+                <div className="skeleton-line" style={{ width: '60%', marginTop: 8 }} />
+              </div>
+              {/* Apply form skeleton */}
+              <div className="skeleton-card bento__mid">
+                <div className="skeleton-line skeleton-line--title" style={{ width: '50%' }} />
+                <div className="skeleton-line" style={{ width: '80%', marginTop: 16 }} />
+                <div className="skeleton-line" style={{ width: '80%', marginTop: 10 }} />
+                <div className="skeleton-line" style={{ width: '60%', marginTop: 10 }} />
+                <div className="skeleton-line" style={{ width: '40%', height: '36px', marginTop: 16, borderRadius: '999px' }} />
+              </div>
+              {/* History table skeleton */}
+              <div className="skeleton-card bento__wide">
+                <div className="skeleton-line skeleton-line--title" style={{ width: '40%' }} />
+                <div style={{ marginTop: 16 }}>
+                  {[85, 72, 90, 68].map((w, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 12, opacity: 1 - i * 0.15 }}>
+                      <div className="skeleton-line" style={{ width: '20%' }} />
+                      <div className="skeleton-line" style={{ width: `${w - 30}%` }} />
+                      <div className="skeleton-line" style={{ width: '15%' }} />
+                      <div className="skeleton-line" style={{ width: '12%' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
         ) : loadError ? (
           <p className="dash-sub">{loadError}</p>
         ) : (
@@ -175,7 +218,8 @@ export default function Leaves() {
                     />
                   </div>
                   {formError && <p className="form-error">{formError}</p>}
-                  <Button type="submit" disabled={submitting}>
+                  <Button type="submit" disabled={submitting} className={submitting ? 'btn--loading' : ''}>
+                    {submitting && <span className="spinner" />}
                     {submitting ? 'Submitting…' : 'Submit request'}
                   </Button>
                 </form>

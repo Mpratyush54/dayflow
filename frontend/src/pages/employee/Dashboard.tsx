@@ -201,7 +201,7 @@ export default function EmployeeDashboard() {
             )}
           </Card>
 
-          <Card className="bento__tall card--tint-mint">
+          <Card className="bento__tall card--tint-mint donut-card">
             {data.attendance!.summary.rate !== null ? (
               <Donut value={data.attendance!.summary.rate} label="Attendance · last 31 days" sublabel={`${data.attendance!.summary.present + data.attendance!.summary.halfDay}/${data.attendance!.summary.workdays} workdays`} />
             ) : (

@@ -1,8 +1,10 @@
 /* Sidebar app shell */
 .shell {
   display: flex;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  width: 100%;
 }
 
 .sidebar {
@@ -14,33 +16,29 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 10;
-  align-self: flex-start;
+  position: relative;
 }
 
 .sidebar__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  font: var(--type-title-md);
-  color: var(--color-ink);
   text-decoration: none;
-  padding: 0 var(--space-sm);
-  min-height: 40px;
+  width: 100%;
+  padding: 0;
 }
 
-.sidebar__logo {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-gradient-mint), var(--color-gradient-lavender), var(--color-gradient-peach));
-  box-shadow: 0 0 0 4px var(--color-surface-strong);
+.sidebar__logo-img {
+  width: 100%;
+  height: 46px;
+  object-fit: fit;
+  border-radius: var(--radius-xs);
+  display: block;
 }
 
 .sidebar__cmdk {
@@ -176,15 +174,33 @@
   border-color: var(--color-ink);
 }
 
-.shell {
-  align-items: flex-start;
+@media (max-height: 700px) {
+  .sidebar {
+    padding: var(--space-base) var(--space-sm);
+    gap: var(--space-sm);
+  }
+  .sidebar__brand {
+    min-height: 32px;
+  }
+  .sidebar__link {
+    padding: 7px var(--space-sm);
+  }
+  .sidebar__user {
+    min-height: 48px;
+    padding: var(--space-xs) var(--space-sm);
+  }
 }
+
 .shell__main {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
-  overflow-x: clip;
-  min-height: 100vh;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar__mobile-toggle {
@@ -247,10 +263,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .donut__ring {
   position: relative;
+  margin: 0 auto;
+  flex-shrink: 0;
 }
 
 .donut__ring svg {
@@ -277,24 +299,53 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0 18%;
+  padding: 0 12%;
+  pointer-events: none;
 }
 
 .donut__num {
   font: var(--type-display-sm);
   color: var(--color-ink);
+  line-height: 1.1;
+  text-align: center;
 }
 
 .donut__sub {
   font: var(--type-caption);
-  color: var(--color-body);
-  margin-top: 2px;
+  color: var(--color-muted);
+  margin-top: 3px;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .donut__label {
-  font: var(--type-caption);
-  color: var(--color-body);
+  font: var(--type-body-sm);
+  font-weight: 500;
+  color: var(--color-ink);
   margin-top: var(--space-sm);
+  text-align: center;
+}
+
+.card--dark .donut__num,
+.card--dark .donut__label {
+  color: var(--color-on-dark);
+}
+
+.card--dark .donut__sub {
+  color: var(--color-on-dark-soft);
+}
+
+/* Donut card container — centers donut and text vertically and horizontally */
+.donut-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.donut-card .dash-sub {
+  text-align: center;
 }
 
 /* Area chart */
@@ -408,6 +459,10 @@
   position: relative;
   width: 72px;
   text-align: center;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .ring svg {
@@ -420,23 +475,45 @@
   animation: fade-in 0.8s ease both;
 }
 
+/* Centered absolutely over the 72px SVG circle */
 .ring__num {
   position: absolute;
-  top: 22px;
+  top: 36px;
   left: 0;
   right: 0;
+  transform: translateY(-50%);
   font: var(--type-title-md);
+  color: var(--color-ink);
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+/* Inside a dark card override to white */
+.card--dark .ring__num {
   color: var(--color-on-dark);
 }
 
 .ring__num small {
   font: var(--type-caption);
+  color: var(--color-muted);
+  margin-left: 1px;
+}
+
+.card--dark .ring__num small {
   color: var(--color-on-dark-soft);
 }
 
 .ring__label {
   display: block;
   font: var(--type-caption);
+  color: var(--color-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
+.card--dark .ring__label {
   color: var(--color-on-dark-soft);
 }
 

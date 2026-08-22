@@ -29,6 +29,28 @@
   animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.auth__brand-wrap {
+  margin-bottom: var(--space-base);
+  display: flex;
+  justify-content: flex-start;
+}
+
+.auth__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.auth__logo-img {
+  height: 48px;
+  width: auto;
+  max-width: 160px;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  border-radius: var(--radius-xs);
+  display: block;
+}
+
 .auth__title {
   font: var(--type-display-md);
   letter-spacing: var(--type-display-md-spacing);

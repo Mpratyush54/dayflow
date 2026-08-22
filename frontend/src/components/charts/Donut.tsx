@@ -11,7 +11,7 @@ export default function Donut({ value, size = 150, label, sublabel }: DonutProps
   const offset = c * (1 - value / 100);
 
   return (
-    <div className="donut" style={{ width: size }}>
+    <div className="donut">
       <div className="donut__ring" style={{ width: size, height: size }}>
         <svg viewBox="0 0 100 100" role="img" aria-label={`${label}: ${value}%`}>
           <defs>

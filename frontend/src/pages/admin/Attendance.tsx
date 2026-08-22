@@ -86,6 +86,7 @@ export default function AttendanceOverview() {
         { label: 'Attendance', hint: 'page', to: '/admin/attendance' },
         { label: 'Leave approvals', hint: 'page', to: '/admin/approvals' },
         { label: 'Payroll', hint: 'page', to: '/admin/payroll' },
+        { label: 'Reports & analytics', hint: 'page', to: '/admin/reports' },
       ]}
     >
       <div className="container page">

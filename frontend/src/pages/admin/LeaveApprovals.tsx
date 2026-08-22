@@ -115,6 +115,7 @@ export default function LeaveApprovals() {
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓', ...(pending > 0 ? { badge: String(pending) } : {}) },
         { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
+        { to: '/admin/reports', label: 'Reports', icon: '📊' },
       ]}
       commands={[
         { label: 'Overview', hint: 'page', to: '/admin' },
@@ -122,6 +123,7 @@ export default function LeaveApprovals() {
         { label: 'Attendance', hint: 'page', to: '/admin/attendance' },
         { label: 'Leave approvals', hint: 'page', to: '/admin/approvals' },
         { label: 'Payroll', hint: 'page', to: '/admin/payroll' },
+        { label: 'Reports & analytics', hint: 'page', to: '/admin/reports' },
       ]}
     >
       <div className="container page">
@@ -129,9 +131,31 @@ export default function LeaveApprovals() {
         <ToastStack toasts={toasts} />
 
         {!ready ? (
-          <div className="bento">
-            <div className="skeleton-card bento__wide"><div className="skeleton-line skeleton-line--title" /><div className="skeleton-line skeleton-line--wide" /></div>
-          </div>
+          <>
+            <div className="dash-head">
+              <div>
+                <div className="skeleton-line" style={{ width: '130px', height: '13px' }} />
+                <div className="skeleton-line skeleton-line--title" style={{ marginTop: 10, width: '260px', height: '36px' }} />
+              </div>
+              <div className="hero-actions">
+                {[64, 80, 92, 80].map((w, i) => (
+                  <div key={i} className="skeleton-line" style={{ width: w, height: 36, borderRadius: '999px' }} />
+                ))}
+              </div>
+            </div>
+            <div className="skeleton-card" style={{ padding: 'var(--space-lg)' }}>
+              <div className="skeleton-line skeleton-line--title" style={{ width: '30%', marginBottom: 20 }} />
+              {[95, 80, 88, 72, 85].map((w, i) => (
+                <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 14, opacity: 1 - i * 0.14 }}>
+                  <div className="skeleton-line" style={{ width: '22%' }} />
+                  <div className="skeleton-line" style={{ width: `${w - 35}%` }} />
+                  <div className="skeleton-line" style={{ width: '14%' }} />
+                  <div className="skeleton-line" style={{ width: '12%' }} />
+                  <div className="skeleton-line" style={{ width: '18%', borderRadius: '999px' }} />
+                </div>
+              ))}
+            </div>
+          </>
         ) : loadError ? (
           <p className="dash-sub">{loadError}</p>
         ) : (
@@ -241,14 +265,18 @@ export default function LeaveApprovals() {
                                     <Button
                                       variant="outline"
                                       disabled={busyId === l.id}
+                                      className={busyId === l.id ? 'btn--loading' : ''}
                                       onClick={() => void decide(l.id, 'REJECTED', name)}
                                     >
+                                      {busyId === l.id && <span className="spinner spinner--dark" />}
                                       Reject
                                     </Button>
                                     <Button
                                       disabled={busyId === l.id}
+                                      className={busyId === l.id ? 'btn--loading' : ''}
                                       onClick={() => void decide(l.id, 'APPROVED', name)}
                                     >
+                                      {busyId === l.id && <span className="spinner" />}
                                       Approve
                                     </Button>
                                   </span>

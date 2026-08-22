@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
+import { SkeletonCard, SkeletonLine, SkeletonTitle, SkeletonAvatar } from '../../components/common/Skeleton';
 import { getEmployee, updateEmployee, uploadDocument, deleteDocument } from '../../api/employees';
 import type { EmployeePatch } from '../../api/employees';
 import type { EmployeeProfile } from '../../types';
@@ -84,8 +87,52 @@ function toFormState(profile: EmployeeProfile): FormState {
   };
 }
 
+function ProfileSkeleton() {
+  return (
+    <>
+      <div className="skeleton-profile-header">
+        <SkeletonAvatar size={72} />
+        <div style={{ flex: 1 }}>
+          <SkeletonTitle width="35%" />
+          <SkeletonLine width="22%" style={{ marginTop: 8 }} />
+          <SkeletonLine width="18%" style={{ marginTop: 6 }} />
+        </div>
+      </div>
+      <div className="skeleton-grid-2">
+        <SkeletonCard>
+          <SkeletonTitle width="50%" />
+          <SkeletonLine width="85%" style={{ marginTop: 16 }} />
+          <SkeletonLine width="70%" style={{ marginTop: 10 }} />
+          <SkeletonLine width="78%" style={{ marginTop: 10 }} />
+          <SkeletonLine width="55%" style={{ marginTop: 10 }} />
+        </SkeletonCard>
+        <SkeletonCard>
+          <SkeletonTitle width="45%" />
+          <SkeletonLine width="80%" style={{ marginTop: 16 }} />
+          <SkeletonLine width="65%" style={{ marginTop: 10 }} />
+          <SkeletonLine width="72%" style={{ marginTop: 10 }} />
+        </SkeletonCard>
+      </div>
+      <div className="skeleton-grid-2">
+        <SkeletonCard>
+          <SkeletonTitle width="40%" />
+          <SkeletonLine width="90%" style={{ marginTop: 16 }} />
+          <SkeletonLine width="75%" style={{ marginTop: 10 }} />
+        </SkeletonCard>
+        <SkeletonCard>
+          <SkeletonTitle width="55%" />
+          <SkeletonLine width="60%" style={{ marginTop: 16 }} />
+          <SkeletonLine width="80%" style={{ marginTop: 10 }} />
+          <SkeletonLine width="45%" style={{ marginTop: 10 }} />
+        </SkeletonCard>
+      </div>
+    </>
+  );
+}
+
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -98,15 +145,19 @@ export default function Profile() {
   const [docUploading, setDocUploading] = useState(false);
   const [docError, setDocError] = useState('');
 
-  const isAdmin = user?.role === 'ADMIN';
+  const isStaff = user?.role === 'ADMIN' || user?.role === 'HR';
+  const isAdmin = isStaff;
+  const paramId = searchParams.get('id');
+  const targetId = isStaff && paramId ? paramId : user?.id;
 
   useEffect(() => {
-    if (!user) return;
-    const userId = user.id;
+    const idToLoad = targetId;
+    if (!idToLoad) return;
     let cancelled = false;
     async function load() {
+      setLoading(true);
       try {
-        const data = await getEmployee(userId);
+        const data = await getEmployee(idToLoad as string);
         if (!cancelled) {
           setProfile(data);
           setLoadError('');
@@ -123,7 +174,7 @@ export default function Profile() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [targetId]);
 
   function startEditing() {
     setSaveError('');
@@ -239,40 +290,103 @@ export default function Profile() {
     }
   }
 
+  const items = isAdmin
+    ? [
+        { to: '/admin', label: 'Overview', icon: '◧', end: true },
+        { to: '/admin/employees', label: 'Employees', icon: '👥' },
+        { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
+        { to: '/admin/approvals', label: 'Approvals', icon: '✓' },
+        { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
+        { to: '/admin/reports', label: 'Reports', icon: '📊' },
+      ]
+    : [
+        { to: '/dashboard', label: 'Dashboard', icon: '◧', end: true },
+        { to: '/profile', label: 'Profile', icon: '👤' },
+        { to: '/attendance', label: 'Attendance', icon: '🗓' },
+        { to: '/leaves', label: 'Leave', icon: '🌴' },
+        { to: '/payslip', label: 'Payslip', icon: '💵' },
+      ];
+
+  const commands = isAdmin
+    ? [
+        { label: 'Overview', hint: 'page', to: '/admin' },
+        { label: 'Employees', hint: 'page', to: '/admin/employees' },
+        { label: 'Attendance', hint: 'page', to: '/admin/attendance' },
+        { label: 'Leave approvals', hint: 'page', to: '/admin/approvals' },
+        { label: 'Payroll', hint: 'page', to: '/admin/payroll' },
+        { label: 'Reports & analytics', hint: 'page', to: '/admin/reports' },
+      ]
+    : [
+        { label: 'Dashboard', hint: 'page', to: '/dashboard' },
+        { label: 'My profile', hint: 'page', to: '/profile' },
+        { label: 'Attendance', hint: 'page', to: '/attendance' },
+        { label: 'Apply for leave', hint: 'action', to: '/leaves' },
+        { label: 'View payslip', hint: 'action', to: '/payslip' },
+      ];
+
+  const sidebarUser = {
+    name: user?.name?.trim() || user?.email || 'User',
+    role: user?.role || 'Employee',
+    initials: initials(user?.name, user?.email),
+  };
+
   if (!user) {
     if (authLoading) {
-      return <main className="profile-page"><p className="profile-page__status">Loading…</p></main>;
+      return (
+        <Sidebar user={sidebarUser} items={items} commands={commands}>
+          <div className="container page">
+            <main className="profile-page"><ProfileSkeleton /></main>
+          </div>
+        </Sidebar>
+      );
     }
     return (
-      <main className="profile-page">
-        <Card heading="Sign in required">
-          <p className="profile-note">
-            You need to sign in to view your profile.
-          </p>
-        </Card>
-      </main>
+      <Sidebar user={sidebarUser} items={items} commands={commands}>
+        <div className="container page">
+          <main className="profile-page">
+            <Card heading="Sign in required">
+              <p className="profile-note">
+                You need to sign in to view your profile.
+              </p>
+            </Card>
+          </main>
+        </div>
+      </Sidebar>
     );
   }
 
   if (loading) {
-    return <main className="profile-page"><p className="profile-page__status">Loading profile…</p></main>;
+    return (
+      <Sidebar user={sidebarUser} items={items} commands={commands}>
+        <div className="container page">
+          <main className="profile-page"><ProfileSkeleton /></main>
+        </div>
+      </Sidebar>
+    );
   }
 
   if (loadError || !profile) {
     return (
-      <main className="profile-page">
-        <p className="profile-page__status profile-page__status--error">
-          {loadError || 'Profile not found'}
-        </p>
-      </main>
+      <Sidebar user={sidebarUser} items={items} commands={commands}>
+        <div className="container page">
+          <main className="profile-page">
+            <p className="profile-page__status profile-page__status--error">
+              {loadError || 'Profile not found'}
+            </p>
+          </main>
+        </div>
+      </Sidebar>
     );
   }
 
   const salary = profile.salary;
 
   return (
-    <main className="profile-page">
-      <Card className="profile-hero">
+    <Sidebar user={sidebarUser} items={items} commands={commands}>
+      <div className="container page">
+        <div className="orb page__orb" aria-hidden />
+        <main className="profile-page">
+          <Card className="profile-hero">
         <div className="profile-hero__avatar" aria-hidden>
           {profile.profilePicture ? (
             <img src={profile.profilePicture} alt="" loading="lazy" />
@@ -485,6 +599,8 @@ export default function Profile() {
           </Card>
         </div>
       )}
-    </main>
+        </main>
+      </div>
+    </Sidebar>
   );
 }

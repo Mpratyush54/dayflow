@@ -128,15 +128,9 @@ a {
   animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Scroll fix — body is the single scroll container; shell__main must not clip */
 .page,
 .container {
   overflow: visible;
-}
-
-.shell__main {
-  overflow: visible;
-  overflow-y: visible;
 }
 
 /* Responsive base (issue #33) */

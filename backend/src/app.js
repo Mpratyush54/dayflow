@@ -15,7 +15,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 app.use(cors({ origin: env.clientUrl, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser());
 
 // Serve uploaded documents (Aadhaar/PAN etc.) — see employee controller upload

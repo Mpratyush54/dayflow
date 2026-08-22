@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 //   status ('PENDING' | 'APPROVED' | 'REJECTED'), reviewerId, reviewerComment
 const leaveRequestSchema = new mongoose.Schema(
   {
-    userId: {
+    userId: { 
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,

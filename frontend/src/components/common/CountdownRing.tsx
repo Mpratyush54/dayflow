@@ -12,7 +12,7 @@ export default function CountdownRing({ days, total, label }: CountdownRingProps
   return (
     <div className="ring" role="img" aria-label={`${days} days ${label}`}>
       <svg viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="var(--color-surface-dark-elevated)" strokeWidth="6" />
+        <circle cx="32" cy="32" r={r} fill="none" stroke="var(--color-hairline)" strokeWidth="6" />
         <circle
           cx="32" cy="32" r={r} fill="none"
           stroke="url(#ring-grad)" strokeWidth="6" strokeLinecap="round"

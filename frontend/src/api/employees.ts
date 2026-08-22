@@ -18,6 +18,8 @@ export type EmployeePatch = Partial<
   > & {
     dateOfBirth?: string;
     dateOfJoining?: string;
+    isVerified?: boolean;
+    status?: 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED';
   }
 >;
 

@@ -6,7 +6,7 @@ import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Pagination from '../../components/common/Pagination';
-import { createEmployee, listEmployees } from '../../api/employees';
+import { createEmployee, listEmployees, updateEmployee } from '../../api/employees';
 import type { CreatedEmployee } from '../../api/employees';
 import type { Role, User } from '../../types';
 import { useToasts } from '../../hooks/useToasts';
@@ -45,11 +45,28 @@ export default function EmployeeList() {
     firstName: '', lastName: '', email: '', role: 'EMPLOYEE',
   });
   const [busy, setBusy] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [created, setCreated] = useState<CreatedEmployee | null>(null);
   const [employees, setEmployees] = useState<User[] | null>(null);
   const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null);
+
+  async function handleVerify(e: User) {
+    if (verifyingId === e.id) return;
+    setVerifyingId(e.id);
+    try {
+      await updateEmployee(e.id, { isVerified: true });
+      push(`Verified account for ${e.name || e.email}`);
+      setEmployees((prev) =>
+        prev ? prev.map((item) => (item.id === e.id ? { ...item, isVerified: true } : item)) : prev,
+      );
+    } catch (err) {
+      push(err instanceof Error ? err.message : 'Failed to verify account');
+    } finally {
+      setVerifyingId(null);
+    }
+  }
 
   useEffect(() => {
     listEmployees(page, 10)
@@ -107,6 +124,7 @@ export default function EmployeeList() {
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓' },
         { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
+        { to: '/admin/reports', label: 'Reports', icon: '📊' },
       ]}
       commands={[
         { label: 'Overview', hint: 'page', to: '/admin' },
@@ -114,6 +132,7 @@ export default function EmployeeList() {
         { label: 'Attendance', hint: 'page', to: '/admin/attendance' },
         { label: 'Leave approvals', hint: 'page', to: '/admin/approvals' },
         { label: 'Payroll', hint: 'page', to: '/admin/payroll' },
+        { label: 'Reports & analytics', hint: 'page', to: '/admin/reports' },
         { label: 'Create employee', hint: 'action', to: '/admin/employees' },
         { label: 'Employee view', hint: 'demo', to: '/dashboard' },
       ]}
@@ -122,48 +141,95 @@ export default function EmployeeList() {
         <div className="orb page__orb" aria-hidden />
         <ToastStack toasts={toasts} />
 
-        <div className="dash-head">
-          <div>
-            <p className="dash-sub">People</p>
-            <h1>Employees</h1>
-          </div>
-          <div className="hero-actions">
-            <Button variant="outline" onClick={() => navigate('/admin')}>Back to overview</Button>
-            <Button onClick={openModal}>＋ Create employee</Button>
-          </div>
-        </div>
-
-        <Card className="table-card" heading={`All employees${pagination ? ` (${pagination.total})` : employees ? ` (${employees.length})` : ''}`}>
-          {employees === null ? (
-            <div className="skeleton-card" style={{ border: 'none', background: 'transparent', padding: 0 }}>
-              <div className="skeleton-line skeleton-line--wide" />
-              <div className="skeleton-line skeleton-line--wide" />
-              <div className="skeleton-line" />
+        {employees === null ? (
+          <>
+            <div className="dash-head">
+              <div>
+                <div className="skeleton-line" style={{ width: '50px', height: '13px' }} />
+                <div className="skeleton-line skeleton-line--title" style={{ marginTop: 10, width: '180px', height: '36px' }} />
+              </div>
+              <div className="hero-actions">
+                <div className="skeleton-line" style={{ width: 140, height: 36, borderRadius: '999px' }} />
+                <div className="skeleton-line" style={{ width: 160, height: 36, borderRadius: '999px' }} />
+              </div>
             </div>
-          ) : employees.length === 0 ? (
-            <p className="dash-sub">No employees yet — create the first one with the button above.</p>
-          ) : (
+            <div className="skeleton-card">
+              <div className="skeleton-line skeleton-line--title" style={{ width: '25%', marginBottom: 20 }} />
+              {[100, 85, 92, 78, 88].map((_, i) => (
+                <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 14, alignItems: 'center', opacity: 1 - i * 0.14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '22%' }}>
+                    <div className="skeleton-avatar" style={{ width: 32, height: 32 }} />
+                    <div className="skeleton-line" style={{ flex: 1 }} />
+                  </div>
+                  <div className="skeleton-line" style={{ width: '24%' }} />
+                  <div className="skeleton-line" style={{ width: '12%' }} />
+                  <div className="skeleton-line" style={{ width: '14%', borderRadius: '999px' }} />
+                  <div className="skeleton-line" style={{ width: '20%', borderRadius: '999px' }} />
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="dash-head">
+              <div>
+                <p className="dash-sub">People</p>
+                <h1>Employees</h1>
+              </div>
+              <div className="hero-actions">
+                <Button variant="outline" onClick={() => navigate('/admin')}>Back to overview</Button>
+                <Button onClick={openModal}>＋ Create employee</Button>
+              </div>
+            </div>
+
+            <Card className="table-card" heading={`All employees${pagination ? ` (${pagination.total})` : employees ? ` (${employees.length})` : ''}`}>
+              {employees.length === 0 ? (
+                <p className="dash-sub">No employees yet — create the first one with the button above.</p>
+              ) : (
             <>
               <table className="table">
                 <thead>
-                  <tr><th>Employee ID</th><th>Name</th><th>Email</th><th>Role</th><th>Verified</th></tr>
+                  <tr><th>Employee</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                   {employees.map(e => (
                     <tr key={e.id}>
-                      <td className="table-mono">{e.employeeId}</td>
                       <td>
                         <span className="cell-name">
                           <span className="avatar avatar--lavender">{initialsOf(e.name || e.email)}</span>
-                          {e.name || '—'}
+                          <span>
+                            {e.name || '—'}
+                            <span className="dash-sub" style={{ display: 'block' }}>{e.employeeId}</span>
+                          </span>
                         </span>
                       </td>
                       <td className="table-mono">{e.email}</td>
                       <td>{e.role}</td>
                       <td>
                         <Badge tone={e.isVerified ? 'success' : 'neutral'}>
-                          {e.isVerified ? 'yes' : 'pending'}
+                          {e.isVerified ? 'Verified' : 'Pending'}
                         </Badge>
+                      </td>
+                      <td>
+                        <span className="leave-actions">
+                          {!e.isVerified && (
+                            <Button
+                              variant="outline"
+                              disabled={verifyingId === e.id}
+                              className={verifyingId === e.id ? 'btn--loading' : ''}
+                              onClick={() => void handleVerify(e)}
+                            >
+                              {verifyingId === e.id && <span className="spinner spinner--dark" />}
+                              {verifyingId === e.id ? 'Verifying…' : 'Approve verification'}
+                            </Button>
+                          )}
+                          <Button
+                            variant="text"
+                            onClick={() => navigate(`/profile?id=${e.id}`)}
+                          >
+                            View profile
+                          </Button>
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -175,6 +241,8 @@ export default function EmployeeList() {
             </>
           )}
         </Card>
+          </>
+        )}
       </div>
 
       {modalOpen && (

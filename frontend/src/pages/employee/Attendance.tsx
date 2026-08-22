@@ -170,8 +170,10 @@ export default function Attendance() {
                   variant={checkedIn ? 'outline' : 'primary'}
                   onClick={() => void handleAction()}
                   disabled={acting || checkedOut}
+                  className={acting ? 'btn--loading' : ''}
                 >
-                  {acting ? '…' : checkedOut ? 'Checked out' : checkedIn ? 'Check out' : 'Check in'}
+                  {acting && <span className={`spinner${checkedIn ? ' spinner--dark' : ''}`} />}
+                  {acting ? (checkedIn ? 'Checking out…' : 'Checking in…') : checkedOut ? 'Checked out' : checkedIn ? 'Check out' : 'Check in'}
                 </Button>
               </div>
             </div>
@@ -191,7 +193,7 @@ export default function Attendance() {
                 </p>
               </Card>
 
-              <Card className="bento__mid card--tint-mint">
+              <Card className="bento__mid card--tint-mint donut-card">
                 <Donut
                   value={data.summary.rate ?? 0}
                   label="Attendance"

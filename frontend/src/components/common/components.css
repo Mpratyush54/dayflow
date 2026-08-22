@@ -2,6 +2,10 @@
 
 /* Buttons */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   font: var(--type-button);
   border-radius: var(--radius-pill);
   cursor: pointer;
@@ -228,3 +232,61 @@ textarea.input {
   min-height: 84px;
   resize: vertical;
 }
+
+/* ── Spinner ───────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Dark-tone spinner for outline/text buttons */
+.spinner--dark {
+  border-color: rgba(41, 37, 36, 0.2);
+  border-top-color: var(--color-ink);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Button loading state — keeps original width, shows spinner */
+.btn--loading {
+  pointer-events: none;
+  opacity: 0.75;
+  gap: var(--space-xs);
+}
+
+/* ── Skeleton avatar circle ─────────────────────────────── */
+.skeleton-avatar {
+  border-radius: 50%;
+  background: var(--color-surface-strong);
+  flex-shrink: 0;
+}
+
+/* Skeleton profile layout helpers */
+.skeleton-profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-base);
+  margin-bottom: var(--space-lg);
+}
+
+.skeleton-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-base);
+  margin-bottom: var(--space-base);
+}
+
+@media (max-width: 800px) {
+  .skeleton-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+

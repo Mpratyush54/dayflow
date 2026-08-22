@@ -29,20 +29,17 @@
   gap: var(--space-lg);
 }
 .landing-nav__brand {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-spacing);
-  color: var(--color-ink);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
 }
-.landing-nav__brand::before {
-  content: '';
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-gradient-mint), var(--color-gradient-lavender), var(--color-gradient-peach));
+.landing-nav__logo-img {
+  height: 34px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  border-radius: var(--radius-xs);
+  display: block;
 }
 .landing-nav__links {
   display: flex;
@@ -257,18 +254,27 @@
 
 /* ROLES */
 .landing-roles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
+.landing-role {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 .landing-role h3 { font: var(--type-title-md); margin: var(--space-sm) 0 var(--space-xs); }
 .landing-role p { font: var(--type-body-sm); color: var(--color-body); }
 .landing-role ul {
   list-style: none;
   padding: 0;
-  margin: var(--space-base) 0 0;
+  margin: var(--space-base) 0 var(--space-lg);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   font: var(--type-body-sm);
 }
 .landing-role ul li::before { content: '— '; color: var(--color-muted-soft); }
+.landing-role .btn {
+  margin-top: auto;
+  align-self: flex-start;
+}
 .card--dark { background: var(--color-surface-dark); border-color: transparent; }
 .card--dark h3, .card--dark p { color: var(--color-on-dark); }
 
@@ -324,7 +330,19 @@
   grid-template-columns: 1.2fr 1.8fr;
   gap: var(--space-xl);
 }
-.landing-footer__brand { font: var(--type-title-sm); color: var(--color-ink); }
+.landing-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+.landing-footer__logo-img {
+  height: 32px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  border-radius: var(--radius-xs);
+  display: block;
+}
 .landing-footer__inner p { font: var(--type-body-sm); color: var(--color-muted); max-width: 360px; }
 .landing-footer__cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg); }
 .landing-footer__head { font: var(--type-caption-uppercase); letter-spacing: var(--type-caption-uppercase-spacing); color: var(--color-ink); text-transform: uppercase; display: block; margin-bottom: var(--space-sm); }
