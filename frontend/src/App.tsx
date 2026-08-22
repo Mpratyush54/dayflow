@@ -9,6 +9,7 @@ import Profile from './pages/employee/Profile';
 import Attendance from './pages/employee/Attendance';
 import Leaves from './pages/employee/Leaves';
 import Payslip from './pages/employee/Payslip';
+import Landing from './pages/Landing';
 import AdminDashboard from './pages/admin/Dashboard';
 import Employees from './pages/admin/Employees';
 import AdminAttendance from './pages/admin/Attendance';
@@ -23,7 +24,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/signin" replace />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
