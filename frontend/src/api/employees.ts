@@ -5,6 +5,27 @@ export function getEmployee(id: string) {
   return api.get<EmployeeProfile>(`/employees/${id}`);
 }
 
+export type EmployeePatch = Partial<
+  Pick<
+    EmployeeProfile,
+    | 'name'
+    | 'phone'
+    | 'address'
+    | 'profilePicture'
+    | 'designation'
+    | 'department'
+    | 'workLocation'
+  > & {
+    dateOfBirth?: string;
+    dateOfJoining?: string;
+  }
+>;
+
+// Self-edit of allowed fields (admins may edit more server-side)
+export function updateEmployee(id: string, patch: EmployeePatch) {
+  return api.patch<EmployeeProfile>(`/employees/${id}`, patch);
+}
+
 export interface CreatedEmployee {
   message: string;
   employeeId: string;
