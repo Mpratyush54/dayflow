@@ -187,3 +187,14 @@
 .top-nav__links a:hover {
   color: var(--color-ink);
 }
+
+/* Select/textarea variants of .input (leave & payroll forms) */
+select.input {
+  padding-right: var(--space-lg);
+}
+
+textarea.input {
+  height: auto;
+  min-height: 84px;
+  resize: vertical;
+}

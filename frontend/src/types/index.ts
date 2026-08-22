@@ -54,15 +54,26 @@ export interface AttendanceRecord {
 export type LeaveType = 'PAID' | 'SICK' | 'UNPAID';
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
+export interface LeaveApplicant {
+  id: string;
+  employeeId: string;
+  email: string;
+  name?: string;
+  role: Role;
+}
+
 export interface LeaveRequest {
   id: string;
-  userId: string;
+  /** String in own requests; populated LeaveApplicant in /leaves/all */
+  userId: string | LeaveApplicant;
   type: LeaveType;
   startDate: string;
   endDate: string;
   remarks?: string;
   status: LeaveStatus;
+  reviewerId?: string | null;
   reviewerComment?: string;
+  createdAt?: string;
 }
 
 export interface Payroll {

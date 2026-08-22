@@ -270,7 +270,7 @@ export const swaggerSpec = {
                   type: { type: 'string', enum: ['PAID', 'SICK', 'UNPAID'] },
                   startDate: { type: 'string', format: 'date' },
                   endDate: { type: 'string', format: 'date' },
-                  remarks: { type: 'string' },
+                  remarks: { type: 'string', maxLength: 500 },
                 },
               },
             },
@@ -278,12 +278,32 @@ export const swaggerSpec = {
         },
         responses: {
           201: { description: 'Leave request created (PENDING)' },
+          400: { description: 'Invalid type or date range (endDate ≥ startDate)' },
+          409: { description: 'Overlaps an existing pending/approved leave' },
+        },
+      },
+    },
+    '/api/leaves/all': {
+      get: {
+        summary: 'All leave requests, newest first (HR/ADMIN only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'status',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', enum: ['PENDING', 'APPROVED', 'REJECTED'] },
+          },
+        ],
+        responses: {
+          200: { description: 'Leave requests with applicant info' },
+          403: { description: 'Forbidden' },
         },
       },
     },
     '/api/leaves/{id}/review': {
       patch: {
-        summary: 'Approve or reject a leave request (admin/HR only)',
+        summary: 'Approve or reject a leave request (HR/ADMIN only, while PENDING)',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
@@ -297,7 +317,7 @@ export const swaggerSpec = {
                 required: ['status'],
                 properties: {
                   status: { type: 'string', enum: ['APPROVED', 'REJECTED'] },
-                  comment: { type: 'string' },
+                  comment: { type: 'string', maxLength: 500 },
                 },
               },
             },
@@ -305,7 +325,10 @@ export const swaggerSpec = {
         },
         responses: {
           200: { description: 'Leave request reviewed' },
-          403: { description: 'Forbidden' },
+          400: { description: 'Invalid review status' },
+          403: { description: 'Forbidden — HR/ADMIN only, cannot review own request' },
+          404: { description: 'Leave request not found' },
+          409: { description: 'Already reviewed' },
         },
       },
     },
