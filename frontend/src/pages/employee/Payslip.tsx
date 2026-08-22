@@ -50,6 +50,10 @@ export default function Payslip() {
   );
 
   async function handleDownload() {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      push('Pick a valid month (YYYY-MM)');
+      return;
+    }
     setDownloading(true);
     try {
       await downloadPayslip(month);
