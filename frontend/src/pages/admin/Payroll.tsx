@@ -1,5 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
@@ -16,6 +15,14 @@ import { getAllPayroll, updatePayroll, downloadPayslip } from '../../api/payroll
 import type { PayrollStructureInput } from '../../api/payroll';
 import { listEmployees } from '../../api/employees';
 import type { Payroll, User } from '../../types';
+import {
+  PF_KEY,
+  PROF_TAX_KEY,
+  buildStructurePreview,
+  recordToComponents,
+  type ComponentMode,
+  type SalaryComponent,
+} from '../../utils/salaryCalc';
 
 function formatMonthName(monthKey: string) {
   const [y, m] = monthKey.split('-').map(Number);
@@ -37,16 +44,16 @@ function getRecentMonths(count = 6) {
 
 const AVATAR_TONES = ['mint', 'peach', 'lavender', 'sky'];
 
-interface Pair {
-  label: string;
-  amount: string;
-}
-
 interface EditState {
   userId: string;
-  basic: string;
-  allowances: Pair[];
-  deductions: Pair[];
+  monthlyWage: string;
+  components: SalaryComponent[];
+}
+
+function modeLabel(mode: ComponentMode) {
+  if (mode === 'percent_of_wage') return '% of Wage';
+  if (mode === 'percent_of_basic') return '% of Basic';
+  return 'Fixed ₹';
 }
 
 function toneOf(seed: string) {
@@ -60,18 +67,6 @@ function money(amount: number, currency = 'INR') {
     currency,
     maximumFractionDigits: 0,
   }).format(amount);
-}
-
-function toPairs(map?: Record<string, number>): Pair[] {
-  return Object.entries(map ?? {}).map(([label, amount]) => ({ label, amount: String(amount) }));
-}
-
-function fromPairs(pairs: Pair[]): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const { label, amount } of pairs) {
-    if (label.trim() && !Number.isNaN(Number(amount))) out[label.trim()] = Number(amount);
-  }
-  return out;
 }
 
 function employeeOf(record: Payroll): User {
@@ -136,43 +131,39 @@ export default function PayrollAdmin() {
     ? Math.round(((records?.length ?? 0) / employees.length) * 100)
     : 0;
 
-  function setPair(list: 'allowances' | 'deductions', index: number, field: keyof Pair) {
-    return (e: ChangeEvent<HTMLInputElement>) =>
-      setEdit((prev) =>
-        prev
-          ? {
-              ...prev,
-              [list]: prev[list].map((p, i) => (i === index ? { ...p, [field]: e.target.value } : p)),
-            }
-          : prev,
-      );
-  }
+  const preview = useMemo(() => {
+    if (!edit) return null;
+    return buildStructurePreview(Number(edit.monthlyWage) || 0, edit.components);
+  }, [edit]);
 
-  function addPair(list: 'allowances' | 'deductions') {
-    setEdit((prev) => (prev ? { ...prev, [list]: [...prev[list], { label: '', amount: '' }] } : prev));
-  }
-
-  function removePair(list: 'allowances' | 'deductions', index: number) {
+  function setComponent(index: number, patch: Partial<SalaryComponent>) {
     setEdit((prev) =>
-      prev ? { ...prev, [list]: prev[list].filter((_, i) => i !== index) } : prev,
+      prev
+        ? { ...prev, components: prev.components.map((c, i) => (i === index ? { ...c, ...patch } : c)) }
+        : prev,
     );
   }
 
   function startEdit(record: Payroll) {
+    const wage = record.basicSalary + Object.values(record.allowances ?? {}).reduce((s, v) => s + v, 0);
     setEdit({
       userId: employeeOf(record).id,
-      basic: String(record.basicSalary),
-      allowances: toPairs(record.allowances),
-      deductions: toPairs(record.deductions),
+      monthlyWage: String(wage || record.basicSalary || 50000),
+      components: recordToComponents(record.basicSalary, record.allowances),
     });
   }
 
   async function save() {
-    if (!edit) return;
+    if (!edit || !preview) return;
+    if (!preview.withinWage) {
+      push('Component total exceeds monthly wage — adjust percentages or wage');
+      return;
+    }
     const input: PayrollStructureInput = {
-      basicSalary: Number(edit.basic) || 0,
-      allowances: fromPairs(edit.allowances),
-      deductions: fromPairs(edit.deductions),
+      monthlyWage: Number(edit.monthlyWage) || 0,
+      components: edit.components
+        .filter((c) => !c.auto)
+        .map((c) => ({ key: c.key, mode: c.mode, value: c.value })),
     };
     setSaving(true);
     try {
@@ -326,48 +317,74 @@ export default function PayrollAdmin() {
                             {isOpen && edit && (
                               <tr className="row-detail">
                                 <td colSpan={6}>
-                                  <div className="row-detail__inner" style={{ flexWrap: 'wrap', gap: 16 }}>
-                                    <div style={{ minWidth: 180 }}>
+                                  <div className="row-detail__inner payroll-editor">
+                                    <div className="payroll-editor__wage">
                                       <Input
-                                        label="Basic salary"
+                                        label="Monthly wage (₹)"
                                         type="number"
                                         min={0}
-                                        value={edit.basic}
-                                        onChange={(e) => setEdit({ ...edit, basic: e.target.value })}
+                                        value={edit.monthlyWage}
+                                        onChange={(e) => setEdit({ ...edit, monthlyWage: e.target.value })}
                                       />
                                     </div>
-                                    {(['allowances', 'deductions'] as const).map((list) => (
-                                      <div key={list} style={{ minWidth: 260 }}>
-                                        <span className="field__label" style={{ display: 'block', marginBottom: 8 }}>
-                                          {list[0].toUpperCase() + list.slice(1)}
-                                        </span>
-                                        {edit[list].map((pair, i) => (
-                                          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                                            <input
-                                              className="input"
-                                              placeholder="Label"
-                                              value={pair.label}
-                                              onChange={setPair(list, i, 'label')}
-                                            />
-                                            <input
-                                              className="input"
-                                              type="number"
-                                              min={0}
-                                              placeholder="₹"
-                                              value={pair.amount}
-                                              onChange={setPair(list, i, 'amount')}
-                                            />
-                                            <Button variant="text" type="button" onClick={() => removePair(list, i)}>✕</Button>
+                                    <div className="payroll-editor__components">
+                                      <span className="field__label">Salary components</span>
+                                      {edit.components.map((comp, i) => {
+                                        const amount = preview
+                                          ? comp.key === 'basic'
+                                            ? preview.basicSalary
+                                            : comp.auto
+                                              ? preview.allowances.fixed_allowance ?? 0
+                                              : preview.allowanceLines.find((l) => l.key === comp.key)?.amount ?? 0
+                                          : 0;
+                                        return (
+                                          <div key={comp.key} className="payroll-editor__row">
+                                            <span className="payroll-editor__label">{comp.label}</span>
+                                            {comp.auto ? (
+                                              <span className="payroll-editor__auto dash-sub">Auto · {money(amount)}</span>
+                                            ) : (
+                                              <>
+                                                <select
+                                                  className="input payroll-editor__mode"
+                                                  value={comp.mode}
+                                                  onChange={(e) => setComponent(i, { mode: e.target.value as ComponentMode })}
+                                                >
+                                                  <option value="percent_of_wage">% of Wage</option>
+                                                  <option value="percent_of_basic">% of Basic</option>
+                                                  <option value="fixed">Fixed ₹</option>
+                                                </select>
+                                                <input
+                                                  className="input payroll-editor__value"
+                                                  type="number"
+                                                  min={0}
+                                                  value={comp.value}
+                                                  onChange={(e) => setComponent(i, { value: e.target.value })}
+                                                  aria-label={`${comp.label} ${modeLabel(comp.mode)}`}
+                                                />
+                                                <span className="payroll-editor__amount">{money(amount)}</span>
+                                              </>
+                                            )}
                                           </div>
-                                        ))}
-                                        <Button variant="text" type="button" onClick={() => addPair(list)}>
-                                          + Add {list.slice(0, -1)}
-                                        </Button>
+                                        );
+                                      })}
+                                    </div>
+                                    {preview && (
+                                      <div className="payroll-editor__summary">
+                                        <p className="dash-sub">
+                                          Gross {money(preview.gross)} · Deductions {money(preview.totalDeductions)}{' '}
+                                          (PF {money(preview.deductions[PF_KEY])}, Prof Tax {money(preview.deductions[PROF_TAX_KEY])})
+                                        </p>
+                                        <p className="dash-sub">
+                                          Net <strong>{money(preview.net)}</strong>
+                                          {!preview.withinWage && (
+                                            <Badge tone="error" style={{ marginLeft: 8 }}>Exceeds wage</Badge>
+                                          )}
+                                        </p>
                                       </div>
-                                    ))}
-                                    <span className="leave-actions" style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
+                                    )}
+                                    <span className="leave-actions payroll-editor__actions">
                                       <Button variant="outline" disabled={saving} onClick={() => setEdit(null)}>Cancel</Button>
-                                      <Button disabled={saving} onClick={() => void save()}>
+                                      <Button disabled={saving || !preview?.withinWage} onClick={() => void save()}>
                                         {saving ? 'Saving…' : 'Save structure'}
                                       </Button>
                                     </span>

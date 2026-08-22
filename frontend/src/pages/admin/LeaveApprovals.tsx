@@ -5,9 +5,11 @@ import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
 import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
+import { useDebouncedSearchParam, setPageParam } from '../../hooks/useDebouncedSearchParam';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useDelayedReady } from '../../hooks/useDelayedReady';
 import { getAllLeaves, reviewLeave } from '../../api/leaves';
@@ -52,6 +54,7 @@ export default function LeaveApprovals() {
   const ready = useDelayedReady();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
+  const { input: searchInput, setInput: setSearchInput, debounced: searchQ } = useDebouncedSearchParam('q');
   const { toasts, push } = useToasts();
   const { pushNotification } = useNotifications();
   const [leaves, setLeaves] = useState<LeaveRequest[] | null>(null);
@@ -64,7 +67,7 @@ export default function LeaveApprovals() {
 
   async function load(p = page) {
     try {
-      const res = await getAllLeaves(filter === 'ALL' ? undefined : filter, p, 10);
+      const res = await getAllLeaves(filter === 'ALL' ? undefined : filter, p, 10, searchQ || undefined);
       if (Array.isArray(res)) {
         setLeaves(res);
         setPagination(null);
@@ -78,7 +81,7 @@ export default function LeaveApprovals() {
     }
   }
 
-  useEffect(() => { void load(page); }, [page, filter]);
+  useEffect(() => { void load(page); }, [page, filter, searchQ]);
 
   useEffect(() => {
     const count = leaves?.filter((l) => l.status === 'PENDING').length ?? 0;
@@ -182,13 +185,23 @@ export default function LeaveApprovals() {
                 <h1>Leave <span className="text-gradient">approvals</span></h1>
               </div>
               <div className="hero-actions">
+                <Input
+                  label="Search"
+                  type="search"
+                  placeholder="Employee name or ID"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="list-search-input"
+                />
                 {FILTERS.map((f) => (
                   <Button
                     key={f.key}
                     variant={filter === f.key ? 'primary' : 'outline'}
                     onClick={() => {
                       setFilter(f.key);
-                      setSearchParams({});
+                      const next = new URLSearchParams(searchParams);
+                      next.delete('page');
+                      setSearchParams(next, { replace: true });
                     }}
                   >
                     {f.label}
@@ -324,7 +337,7 @@ export default function LeaveApprovals() {
                 </div>
               )}
               {pagination && visible.length > 0 && (
-                <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />
+                <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setPageParam(searchParams, setSearchParams, p)} />
               )}
               {visible.length > 0 && <p className="dash-sub" style={{ marginTop: 12 }}>Click a pending row to review it</p>}
             </Card>

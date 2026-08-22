@@ -2,10 +2,12 @@ import { api, download, saveBlob } from './client';
 import type { Payroll } from '../types';
 
 export interface PayrollStructureInput {
-  basicSalary: number;
+  basicSalary?: number;
   currency?: string;
-  allowances: Record<string, number>;
-  deductions: Record<string, number>;
+  allowances?: Record<string, number>;
+  deductions?: Record<string, number>;
+  monthlyWage?: number;
+  components?: Array<{ key: string; mode: string; value: string | number }>;
 }
 
 export function getMyPayroll() {

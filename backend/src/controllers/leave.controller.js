@@ -7,6 +7,7 @@ import User from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { notifyLeaveDecision, notifyNewLeaveRequest } from '../utils/mailer.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
+import { employeeTextFilter } from '../utils/searchFilter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,6 +146,12 @@ export async function getAllLeaves(req, res) {
       throw new HttpError(400, 'status must be PENDING, APPROVED or REJECTED', 'VALIDATION_ERROR');
     }
     filter.status = req.query.status;
+  }
+
+  const textFilter = employeeTextFilter(req.query.q);
+  if (textFilter) {
+    const users = await User.find(textFilter).select('_id');
+    filter.userId = { $in: users.map((u) => u._id) };
   }
 
   const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;

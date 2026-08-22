@@ -13,6 +13,7 @@ import { getTeamAttendance } from '../../api/attendance';
 import type { TeamAttendance } from '../../types';
 import { useToasts } from '../../hooks/useToasts';
 import { ToastStack } from '../../components/common/Toast';
+import { useDebouncedSearchParam, setPageParam } from '../../hooks/useDebouncedSearchParam';
 
 function initialsOf(name: string) {
   return name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || '?';
@@ -42,6 +43,7 @@ export default function EmployeeList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
+  const { input: searchInput, setInput: setSearchInput, debounced: searchQ } = useDebouncedSearchParam('q');
   const { toasts, push } = useToasts();
   const [form, setForm] = useState<{ firstName: string; lastName: string; email: string; role: Role }>({
     firstName: '', lastName: '', email: '', role: 'EMPLOYEE',
@@ -73,7 +75,7 @@ export default function EmployeeList() {
   }
 
   useEffect(() => {
-    listEmployees(page, 10)
+    listEmployees(page, 10, searchQ || undefined)
       .then((res) => {
         if (Array.isArray(res)) {
           setEmployees(res);
@@ -84,7 +86,7 @@ export default function EmployeeList() {
         }
       })
       .catch(() => setEmployees([]));
-  }, [page]);
+  }, [page, searchQ]);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -186,6 +188,14 @@ export default function EmployeeList() {
                 <h1>Employees</h1>
               </div>
               <div className="hero-actions">
+                <Input
+                  label="Search"
+                  type="search"
+                  placeholder="Name, email or ID"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="list-search-input"
+                />
                 <div style={{ display: 'flex', gap: 8, border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-pill)', padding: 4 }}>
                   <Button variant={viewMode === 'grid' ? 'primary' : 'text'} onClick={() => setViewMode('grid')}>Grid</Button>
                   <Button variant={viewMode === 'table' ? 'primary' : 'text'} onClick={() => setViewMode('table')}>Table</Button>
@@ -240,7 +250,7 @@ export default function EmployeeList() {
                   </div>
                   {pagination && (
                     <div style={{ marginTop: 'var(--space-lg)' }}>
-                      <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />
+                      <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setPageParam(searchParams, setSearchParams, p)} />
                     </div>
                   )}
                 </>
@@ -295,7 +305,7 @@ export default function EmployeeList() {
                 </tbody>
               </table>
               {pagination && (
-                <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />
+                <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setPageParam(searchParams, setSearchParams, p)} />
               )}
             </>
           )}

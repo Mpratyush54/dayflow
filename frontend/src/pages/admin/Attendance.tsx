@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
 import Sparkline from '../../components/charts/Sparkline';
 import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
+import { useDebouncedSearchParam, setPageParam } from '../../hooks/useDebouncedSearchParam';
 import { getAttendanceStreamUrl, getTeamAttendance } from '../../api/attendance';
 import type { TeamAttendance } from '../../types';
 import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
@@ -44,6 +46,7 @@ export default function AttendanceOverview() {
   const [now, setNow] = useState(() => new Date());
   const [liveStillIn, setLiveStillIn] = useState<number | null>(null);
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
+  const { input: searchInput, setInput: setSearchInput, debounced: searchQ } = useDebouncedSearchParam('q');
   const PAGE_SIZE = 10;
 
   const load = useCallback(async (forDate: string) => {
@@ -121,15 +124,24 @@ export default function AttendanceOverview() {
   }, [date, load]);
 
   const rows = data?.rows ?? [];
+  const filteredRows = useMemo(() => {
+    const q = searchQ.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => {
+      const u = r.user;
+      const hay = `${u.name ?? ''} ${u.email ?? ''} ${u.employeeId ?? ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [rows, searchQ]);
   const present = rows.filter((r) => r.status === 'PRESENT').length;
   const halfDay = rows.filter((r) => r.status === 'HALF_DAY').length;
   const absent = rows.filter((r) => r.status === 'ABSENT').length;
   const onLeave = rows.filter((r) => r.status === 'LEAVE').length;
   const stillInBase = rows.filter((r) => r.checkIn && !r.checkOut).length;
   const stillIn = liveStillIn ?? stillInBase;
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paginatedRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paginatedRows = filteredRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const isToday = date === todayKey();
 
   return (
@@ -177,6 +189,14 @@ export default function AttendanceOverview() {
                 )}
               </div>
               <div className="hero-actions">
+                <Input
+                  label="Search"
+                  type="search"
+                  placeholder="Name, email or ID"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="list-search-input"
+                />
                 <input
                   type="date"
                   className="input"
@@ -185,12 +205,26 @@ export default function AttendanceOverview() {
                   max={todayKey()}
                   onChange={(e) => {
                     const v = e.target.value;
-                    if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) setSearchParams({ date: v });
-                    else setSearchParams({});
+                    const next = new URLSearchParams(searchParams);
+                    if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) next.set('date', v);
+                    else next.delete('date');
+                    next.delete('page');
+                    setSearchParams(next, { replace: true });
                   }}
                   aria-label="Pick a date"
                 />
-                <Button variant="outline" onClick={() => { setSearchParams({}); push('Showing today'); }}>Today</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('date');
+                    next.delete('page');
+                    setSearchParams(next, { replace: true });
+                    push('Showing today');
+                  }}
+                >
+                  Today
+                </Button>
               </div>
             </div>
 
@@ -265,17 +299,12 @@ export default function AttendanceOverview() {
                       </tbody>
                     </table>
                   </div>
-                    {rows.length > PAGE_SIZE && (
+                    {filteredRows.length > PAGE_SIZE && (
                       <Pagination
                         page={safePage}
                         pages={totalPages}
-                        total={rows.length}
-                        onPageChange={(p) => {
-                          const next = new URLSearchParams(searchParams);
-                          if (p === 1) next.delete('page');
-                          else next.set('page', String(p));
-                          setSearchParams(next);
-                        }}
+                        total={filteredRows.length}
+                        onPageChange={(p) => setPageParam(searchParams, setSearchParams, p)}
                       />
                     )}
                   </>

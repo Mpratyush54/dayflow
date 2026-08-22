@@ -7,6 +7,7 @@ import LeaveRequest from '../models/leave.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { notifyPayslipReady } from '../utils/mailer.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
+import { mergeStandardDeductions, buildPayrollStructure } from '../utils/salaryCalc.js';
 
 function assertValidId(id) {
   if (!mongoose.isValidObjectId(id)) {
@@ -77,7 +78,19 @@ export async function updatePayroll(req, res) {
     throw new HttpError(400, 'basicSalary must be a non-negative number', 'VALIDATION_ERROR');
   }
   const allowances = parseAmountMap(req.body.allowances, 'allowances');
-  const deductions = parseAmountMap(req.body.deductions, 'deductions');
+  let deductions = parseAmountMap(req.body.deductions, 'deductions');
+
+  // Optional wage-based structure: { monthlyWage, components: [{ key, mode, value }] }
+  let basicSalaryFinal = basicSalary !== undefined ? Number(basicSalary) : undefined;
+  let allowancesFinal = allowances;
+  if (req.body.monthlyWage !== undefined && Array.isArray(req.body.components)) {
+    const built = buildPayrollStructure(req.body.monthlyWage, req.body.components);
+    basicSalaryFinal = built.basicSalary;
+    allowancesFinal = built.allowances;
+    deductions = built.deductions;
+  } else if (basicSalaryFinal !== undefined) {
+    deductions = mergeStandardDeductions(basicSalaryFinal, deductions);
+  }
 
   const existing = await Payroll.findOne({ userId: req.params.userId });
   let saved;
@@ -91,18 +104,18 @@ export async function updatePayroll(req, res) {
         deductions: existing.deductions,
       },
     });
-    if (basicSalary !== undefined) existing.basicSalary = Number(basicSalary);
+    if (basicSalaryFinal !== undefined) existing.basicSalary = basicSalaryFinal;
     if (currency !== undefined) existing.currency = String(currency);
-    existing.allowances = allowances;
+    existing.allowances = allowancesFinal;
     existing.deductions = deductions;
     existing.effectiveFrom = effectiveFrom ? new Date(effectiveFrom) : new Date();
     saved = await existing.save();
   } else {
     saved = await Payroll.create({
       userId: req.params.userId,
-      basicSalary: basicSalary !== undefined ? Number(basicSalary) : 0,
+      basicSalary: basicSalaryFinal !== undefined ? basicSalaryFinal : 0,
       currency: currency !== undefined ? String(currency) : 'INR',
-      allowances,
+      allowances: allowancesFinal,
       deductions,
       effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
     });
