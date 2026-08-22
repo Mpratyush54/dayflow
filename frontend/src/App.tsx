@@ -14,6 +14,7 @@ import Employees from './pages/admin/Employees';
 import AdminAttendance from './pages/admin/Attendance';
 import LeaveApprovals from './pages/admin/LeaveApprovals';
 import Payroll from './pages/admin/Payroll';
+import Reports from './pages/admin/Reports';
 
 // There is no public sign-up: HR/Admin create accounts via POST /api/employees
 // (employeeId + one-time password are system-generated).
@@ -43,12 +44,12 @@ export default function App() {
             <Route path="/admin/attendance" element={<AdminAttendance />} />
             <Route path="/admin/approvals" element={<LeaveApprovals />} />
             <Route path="/admin/payroll" element={<Payroll />} />
+            <Route path="/admin/reports" element={<Reports />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/signin" replace />} />
         </Routes>
       </AuthProvider>
-e560b9 (feat: payroll module — read-only salary view + admin structure editor with revision trail)
     </BrowserRouter>
   );
 }

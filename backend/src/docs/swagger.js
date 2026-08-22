@@ -454,5 +454,57 @@ export const swaggerSpec = {
         },
       },
     },
+    '/api/payroll/slip': {
+      get: {
+        summary: 'PDF salary slip (server-generated)',
+        description:
+          'Streams a PDF payslip for the given month, built from the current Payroll ' +
+          'structure. Employees get their own slip; HR/ADMIN may pass ?userId= for anyone. ' +
+          '422 when no payroll record exists.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'month', in: 'query', schema: { type: 'string', pattern: '^\\d{4}-\\d{2}$' }, description: 'YYYY-MM (defaults to current month)' },
+          { name: 'userId', in: 'query', schema: { type: 'string' }, description: 'HR/ADMIN only: employee whose slip to generate' },
+        ],
+        responses: {
+          200: { description: 'application/pdf attachment' },
+          403: { description: 'Requesting another employee slip as non-HR/ADMIN' },
+          422: { description: 'No payroll record for the employee' },
+        },
+      },
+    },
+    '/api/attendance/report': {
+      get: {
+        summary: 'Monthly attendance summary per employee (HR/ADMIN)',
+        description:
+          'Per-employee present / half-day / approved-leave / absent days, hours and rate ' +
+          'for the month (current months are capped at today). ?format=csv streams a CSV attachment.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'month', in: 'query', schema: { type: 'string', pattern: '^\\d{4}-\\d{2}$' }, description: 'YYYY-MM (defaults to current month)' },
+          { name: 'format', in: 'query', schema: { type: 'string', enum: ['json', 'csv'] }, description: 'csv streams a downloadable file' },
+        ],
+        responses: {
+          200: { description: 'Summary rows (JSON object or text/csv attachment)' },
+          403: { description: 'Forbidden (EMPLOYEE role)' },
+        },
+      },
+    },
+    '/api/analytics/summary': {
+      get: {
+        summary: 'Admin analytics for the reports page (HR/ADMIN)',
+        description:
+          'Headcount (total/active/by role), daily attendance trend, leave usage by type ' +
+          '(approved weekday-days), pending leave count and payroll totals for the month.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'month', in: 'query', schema: { type: 'string', pattern: '^\\d{4}-\\d{2}$' }, description: 'YYYY-MM (defaults to current month)' },
+        ],
+        responses: {
+          200: { description: 'Analytics summary' },
+          403: { description: 'Forbidden (EMPLOYEE role)' },
+        },
+      },
+    },
   },
 };

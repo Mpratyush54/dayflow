@@ -4,6 +4,7 @@ import {
   getMyPayroll,
   getAllPayroll,
   updatePayroll,
+  slip,
 } from '../controllers/payroll.controller.js';
 
 const router = Router();
@@ -17,6 +18,9 @@ router.get('/', getMyPayroll);
 
 // GET   /api/payroll/all      all salary structures (HR/ADMIN)
 router.get('/all', requireRole('HR', 'ADMIN'), getAllPayroll);
+
+// GET   /api/payroll/slip     PDF salary slip (?month=, self or HR/ADMIN ?userId=)
+router.get('/slip', slip);
 
 // PATCH /api/payroll/:userId  update a structure with revision trail (HR/ADMIN)
 router.patch('/:userId', requireRole('HR', 'ADMIN'), updatePayroll);

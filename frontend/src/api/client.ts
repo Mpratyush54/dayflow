@@ -94,6 +94,46 @@ export const api = {
 };
 
 // There is no public sign-up: HR/Admin create accounts via POST /api/employees
+
+// Authenticated file download (CSV/PDF) — same token injection + refresh retry
+export async function download(path: string): Promise<{ blob: Blob; filename: string }> {
+  let res = await fetch(`${BASE_URL}${path}`, {
+    credentials: 'include',
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+
+  if (res.status === 401 && accessToken) {
+    const renewed = await refreshAccessToken();
+    if (renewed) {
+      res = await fetch(`${BASE_URL}${path}`, {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${renewed}` },
+      });
+    }
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.message ?? `Download failed: ${res.status}`, body.code);
+  }
+
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  return { blob: await res.blob(), filename: match?.[1] ?? 'download' };
+}
+
+/** Trigger a browser save for a downloaded blob */
+export function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const authApi = {
   signIn: (payload: { email: string; password: string }) =>
     api.post<SignInResponse>('/auth/signin', payload),

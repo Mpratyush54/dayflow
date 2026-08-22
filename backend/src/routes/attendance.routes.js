@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
-import { checkin, checkout, getMine, getTeam } from '../controllers/attendance.controller.js';
+import { checkin, checkout, getMine, getTeam, report } from '../controllers/attendance.controller.js';
 
 const router = Router();
 
@@ -9,6 +9,9 @@ router.get('/', requireAuth, getMine);
 
 // GET  /api/attendance/team      (HR/ADMIN) everyone's attendance for a date
 router.get('/team', requireAuth, requireRole('HR', 'ADMIN'), getTeam);
+
+// GET  /api/attendance/report    (HR/ADMIN) monthly summary per employee, ?format=csv
+router.get('/report', requireAuth, requireRole('HR', 'ADMIN'), report);
 
 // POST /api/attendance/checkin
 router.post('/checkin', requireAuth, checkin);

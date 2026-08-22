@@ -1,4 +1,5 @@
 import Attendance from '../models/attendance.model.js';
+import LeaveRequest from '../models/leave.model.js';
 import User, { USER_PUBLIC_FIELDS } from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { getApprovedLeaveDays } from '../services/attendance.service.js';
@@ -157,4 +158,120 @@ export async function getTeam(req, res) {
     isWeekend: weekday === 0 || weekday === 6,
     rows,
   });
+}
+
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function monthBounds(month) {
+  const [y, m] = month.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const last = new Date(y, m, 0); // day 0 of next month = last day
+  const today = new Date();
+  const cap = first <= today && today <= last ? today : last; // current month: up to today
+  return { first, last: new Date(Math.min(last, cap)) };
+}
+
+function workdaysInMonth(month) {
+  const { first, last } = monthBounds(month);
+  let count = 0;
+  for (const d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+    const day = new Date(d).getDay();
+    if (day !== 0 && day !== 6) count++;
+  }
+  return count;
+}
+
+function monthKey(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// GET /api/attendance/report?month=YYYY-MM[&format=csv] — HR/ADMIN monthly summary per employee
+export async function report(req, res) {
+  const month =
+    typeof req.query.month === 'string' && MONTH_RE.test(req.query.month)
+      ? req.query.month
+      : monthKey();
+
+  const { first, last } = monthBounds(month);
+  const workdays = workdaysInMonth(month);
+
+  const [users, records] = await Promise.all([
+    User.find({ status: { $ne: 'RESIGNED' } })
+      .select(`${USER_PUBLIC_FIELDS} status`)
+      .sort({ employeeId: 1 }),
+    Attendance.find({
+      date: { $gte: dateKey(first), $lte: dateKey(last) },
+    }).select('user status checkIn checkOut'),
+  ]);
+
+  const stats = new Map(); // userId -> { present, halfDay, hours }
+  for (const r of records) {
+    const id = r.user.toString();
+    const s = stats.get(id) ?? { present: 0, halfDay: 0, hours: 0 };
+    if (r.status === 'HALF_DAY') s.halfDay++;
+    else s.present++;
+    if (r.checkOut) s.hours += (r.checkOut - r.checkIn) / 3600000;
+    stats.set(id, s);
+  }
+
+  // Approved leave days per employee (weekdays overlapping the month window)
+  const leaves = await LeaveRequest.find({
+    status: 'APPROVED',
+    startDate: { $lte: last },
+    endDate: { $gte: first },
+  }).select('userId startDate endDate');
+  const leaveDaysByUser = new Map();
+  for (const lv of leaves) {
+    const from = new Date(Math.max(lv.startDate, first));
+    const to = new Date(Math.min(lv.endDate, last));
+    let days = 0;
+    for (const d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      const day = new Date(d).getDay();
+      if (day !== 0 && day !== 6) days++;
+    }
+    if (days <= 0) continue;
+    const id = lv.userId.toString();
+    leaveDaysByUser.set(id, (leaveDaysByUser.get(id) ?? 0) + days);
+  }
+
+  const rows = users.map((user) => {
+    const s = stats.get(user._id.toString()) ?? { present: 0, halfDay: 0, hours: 0 };
+    const leaveDays = Math.min(leaveDaysByUser.get(user._id.toString()) ?? 0, workdays);
+    const absent = Math.max(workdays - s.present - s.halfDay - leaveDays, 0);
+    return {
+      employeeId: user.employeeId,
+      name: user.name?.trim() || user.email,
+      email: user.email,
+      role: user.role,
+      present: s.present,
+      halfDay: s.halfDay,
+      leaveDays,
+      absent,
+      workdays,
+      hours: Math.round(s.hours * 10) / 10,
+      rate: workdays === 0 ? null : Math.round(((s.present + s.halfDay * 0.5) / workdays) * 100),
+    };
+  });
+
+  if (req.query.format === 'csv') {
+    const header = [
+      'Employee ID', 'Name', 'Email', 'Role', 'Present', 'Half days', 'Leave days',
+      'Absent', 'Workdays', 'Hours', 'Rate %',
+    ];
+    const esc = (v) => (typeof v === 'string' && /[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
+    const csv = [
+      header.join(','),
+      ...rows.map((r) =>
+        [r.employeeId, r.name, r.email, r.role, r.present, r.halfDay, r.leaveDays, r.absent, r.workdays, r.hours, r.rate ?? '']
+          .map(esc)
+          .join(','),
+      ),
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance-${month}.csv"`);
+    return res.send(csv);
+  }
+
+  res.json({ month, workdays, generatedAt: new Date().toISOString(), rows });
 }
