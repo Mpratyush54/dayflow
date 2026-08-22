@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/theme-context';
 import { useAuth } from '../../hooks/useAuth';
 import CommandPalette from '../common/CommandPalette';
+import NotificationCenter from '../common/NotificationCenter';
 import type { Command } from '../common/CommandPalette';
 
 export interface NavItem {
@@ -87,17 +88,20 @@ export default function Sidebar({ items, user, commands = [], children }: Sideba
         />
       )}
       <aside className={`sidebar ${mobileOpen ? 'is-open' : ''}`}>
-        <Link
-          to={authUser?.role === 'ADMIN' || authUser?.role === 'HR' ? '/admin' : '/dashboard'}
-          className="sidebar__brand"
-          onClick={() => setMobileOpen(false)}
-        >
-          <img
-            src={theme === 'dark' ? '/logo-black.jpeg' : '/logo-light.jpeg'}
-            alt="DayFlow"
-            className="sidebar__logo-img"
-          />
-        </Link>
+        <div className="sidebar__header">
+          <Link
+            to={authUser?.role === 'ADMIN' || authUser?.role === 'HR' ? '/admin' : '/dashboard'}
+            className="sidebar__brand"
+            onClick={() => setMobileOpen(false)}
+          >
+            <img
+              src={theme === 'dark' ? '/logo-black.jpeg' : '/logo-light.jpeg'}
+              alt="DayFlow"
+              className="sidebar__logo-img"
+            />
+          </Link>
+          <NotificationCenter />
+        </div>
         <button className="sidebar__cmdk" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}>
           <span aria-hidden>⌕</span> Quick jump
           <kbd>Ctrl K</kbd>

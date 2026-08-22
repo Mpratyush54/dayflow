@@ -11,6 +11,7 @@ import AreaChart from '../../components/charts/AreaChart';
 import Heatmap from '../../components/charts/Heatmap';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
+import { useNotifications } from '../../hooks/useNotifications';
 import { useAuth } from '../../hooks/useAuth';
 import { checkIn, checkOut, getMyAttendance } from '../../api/attendance';
 import { getMyLeaves } from '../../api/leaves';
@@ -82,6 +83,7 @@ export default function EmployeeDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toasts, push } = useToasts();
+  const { pushNotification } = useNotifications();
   const [now, setNow] = useState(() => new Date());
   const [data, setData] = useState<Data>({ attendance: null, leaves: null, payroll: null });
   const [busy, setBusy] = useState(false);
@@ -110,6 +112,38 @@ export default function EmployeeDashboard() {
       alive = false;
     };
   }, [refresh]);
+
+  useEffect(() => {
+    const todayDay = data.attendance?.days[data.attendance.days.length - 1];
+    if (data.attendance === null || !todayDay) return;
+    const hour = now.getHours();
+    if (!todayDay.checkIn && hour >= 9 && hour < 18) {
+      const todayKey = now.toISOString().slice(0, 10);
+      pushNotification(
+        {
+          kind: 'check-in-reminder',
+          title: 'Check in reminder',
+          message: "You haven't checked in yet today — tap to mark attendance",
+          href: '/attendance',
+        },
+        { dedupeKey: `check-in-${todayKey}` },
+      );
+    }
+  }, [data.attendance, now, pushNotification]);
+
+  useEffect(() => {
+    if (data.payroll) {
+      pushNotification(
+        {
+          kind: 'payroll-ready',
+          title: 'Payroll ready',
+          message: 'Your latest payslip is available to view',
+          href: '/payslip',
+        },
+        { dedupeKey: `payroll-ready-${data.payroll.id ?? 'current'}` },
+      );
+    }
+  }, [data.payroll, pushNotification]);
 
   const firstName = (user?.name ?? user?.email ?? 'there').split(/\s+/)[0];
   const today = data.attendance?.days[data.attendance.days.length - 1];

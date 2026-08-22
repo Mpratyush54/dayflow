@@ -218,6 +218,22 @@ export const swaggerSpec = {
                   address: { type: 'string' },
                   profilePicture: { type: 'string' },
                   dateOfBirth: { type: 'string', format: 'date' },
+                  nationality: { type: 'string' },
+                  personalEmail: { type: 'string', format: 'email' },
+                  gender: {
+                    type: 'string',
+                    enum: ['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY', ''],
+                  },
+                  maritalStatus: {
+                    type: 'string',
+                    enum: ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED', 'OTHER', ''],
+                  },
+                  bankAccountNo: { type: 'string' },
+                  bankName: { type: 'string' },
+                  ifsc: { type: 'string' },
+                  pan: { type: 'string' },
+                  uan: { type: 'string' },
+                  empCode: { type: 'string', description: 'Admin only — internal employee code' },
                   designation: { type: 'string' },
                   department: { type: 'string' },
                   employmentType: {

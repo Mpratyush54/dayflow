@@ -17,6 +17,9 @@ export interface EmployeeDocument {
   uploadedAt: string;
 }
 
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY' | '';
+export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED' | 'OTHER' | '';
+
 export interface User {
   id: string;
   employeeId: string;
@@ -34,6 +37,16 @@ export interface User {
 
 export interface EmployeeProfile extends User {
   dateOfBirth?: string;
+  nationality?: string;
+  personalEmail?: string;
+  gender?: Gender;
+  maritalStatus?: MaritalStatus;
+  bankAccountNo?: string;
+  bankName?: string;
+  ifsc?: string;
+  pan?: string;
+  uan?: string;
+  empCode?: string;
   designation?: string;
   department?: string;
   employmentType?: EmploymentType;

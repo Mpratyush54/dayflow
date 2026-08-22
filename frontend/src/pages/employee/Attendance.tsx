@@ -10,6 +10,7 @@ import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
 import { checkIn, checkOut, getMyAttendance } from '../../api/attendance';
 import type { AttendanceWindow } from '../../types';
+import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
 
 function todayKey() {
   const d = new Date();
@@ -76,7 +77,7 @@ export default function Attendance() {
   const checkedOut = !!today?.checkOut;
   const liveHours =
     checkedIn && !checkedOut && today?.checkIn
-      ? Math.max((now.getTime() - new Date(today.checkIn).getTime()) / 3600000, 0)
+      ? liveHoursFromCheckIn(today.checkIn, now)
       : 0;
 
   async function handleAction() {
@@ -227,6 +228,8 @@ export default function Attendance() {
                         <th>Checked in</th>
                         <th>Checked out</th>
                         <th>Hours</th>
+                        <th>Work hours</th>
+                        <th>Extra hours</th>
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -234,17 +237,21 @@ export default function Attendance() {
                       {data.days.map((d) => {
                         const isToday = d.date === today?.date;
                         const isWeekend = d.weekday === 'Sat' || d.weekday === 'Sun';
-                        const hours = d.checkOut
-                          ? `${d.workedHours.toFixed(1)}h`
-                          : d.checkIn && isToday
-                            ? `${liveHours.toFixed(1)}h`
-                            : '—';
+                        const total = totalLoggedHours(
+                          d.workedHours,
+                          d.checkIn,
+                          d.checkOut,
+                          isToday,
+                          liveHours,
+                        );
                         return (
                           <tr key={d.date} className="animate-in">
                             <td>{fmtDate(d.date)} <span style={{ color: 'var(--color-muted)' }}>· {d.weekday}</span></td>
                             <td className="table-mono">{fmtTime(d.checkIn)}</td>
                             <td className="table-mono">{fmtTime(d.checkOut)}</td>
-                            <td className="table-mono">{hours}</td>
+                            <td className="table-mono">{fmtHours(total)}</td>
+                            <td className="table-mono">{total !== null ? fmtHours(workHours(total)) : '—'}</td>
+                            <td className="table-mono">{total !== null ? fmtHours(extraHours(total)) : '—'}</td>
                             <td>
                               {d.status === 'PRESENT' && <Badge tone="success">Present</Badge>}
                               {d.status === 'HALF_DAY' && <Badge tone="neutral">Half day</Badge>}

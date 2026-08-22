@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const SignIn = lazy(() => import('./pages/auth/SignIn'));
@@ -37,6 +38,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <NotificationProvider>
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -66,6 +68,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/signin" replace />} />
           </Routes>
         </Suspense>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

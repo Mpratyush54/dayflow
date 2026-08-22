@@ -8,6 +8,7 @@ import Button from '../../components/common/Button';
 import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
+import { useNotifications } from '../../hooks/useNotifications';
 import { useDelayedReady } from '../../hooks/useDelayedReady';
 import { getAllLeaves, reviewLeave } from '../../api/leaves';
 import type { ReviewDecision } from '../../api/leaves';
@@ -52,6 +53,7 @@ export default function LeaveApprovals() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
   const { toasts, push } = useToasts();
+  const { pushNotification } = useNotifications();
   const [leaves, setLeaves] = useState<LeaveRequest[] | null>(null);
   const [loadError, setLoadError] = useState('');
   const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null);
@@ -77,6 +79,20 @@ export default function LeaveApprovals() {
   }
 
   useEffect(() => { void load(page); }, [page, filter]);
+
+  useEffect(() => {
+    const count = leaves?.filter((l) => l.status === 'PENDING').length ?? 0;
+    if (count <= 0) return;
+    pushNotification(
+      {
+        kind: 'pending-approval',
+        title: 'Approvals pending',
+        message: `${count} leave request${count === 1 ? '' : 's'} awaiting your review`,
+        href: '/admin/approvals',
+      },
+      { dedupeKey: `pending-approvals-${count}` },
+    );
+  }, [leaves, pushNotification]);
 
   const pending = leaves?.filter((l) => l.status === 'PENDING').length ?? 0;
 

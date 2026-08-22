@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
@@ -9,11 +9,47 @@ import Badge from '../../components/common/Badge';
 import { SkeletonCard, SkeletonLine, SkeletonTitle, SkeletonAvatar } from '../../components/common/Skeleton';
 import { getEmployee, updateEmployee, uploadDocument, deleteDocument } from '../../api/employees';
 import type { EmployeePatch } from '../../api/employees';
-import type { EmployeeProfile } from '../../types';
+import type { EmployeeProfile, Gender, MaritalStatus } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import './Profile.css';
 
 const MAX_IMAGE_BYTES = 1024 * 1024;
+
+type ProfileTab = 'resume' | 'private' | 'salary' | 'security';
+
+const PROFILE_TABS: { id: ProfileTab; label: string; staffOnly?: boolean }[] = [
+  { id: 'resume', label: 'Resume' },
+  { id: 'private', label: 'Private Info' },
+  { id: 'salary', label: 'Salary Info', staffOnly: true },
+  { id: 'security', label: 'Security' },
+];
+
+const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: '', label: '— Select —' },
+  { value: 'MALE', label: 'Male' },
+  { value: 'FEMALE', label: 'Female' },
+  { value: 'OTHER', label: 'Other' },
+  { value: 'PREFER_NOT_TO_SAY', label: 'Prefer not to say' },
+];
+
+const MARITAL_OPTIONS: { value: MaritalStatus; label: string }[] = [
+  { value: '', label: '— Select —' },
+  { value: 'SINGLE', label: 'Single' },
+  { value: 'MARRIED', label: 'Married' },
+  { value: 'DIVORCED', label: 'Divorced' },
+  { value: 'WIDOWED', label: 'Widowed' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+function parseProfileTab(value: string | null): ProfileTab {
+  if (value === 'private' || value === 'salary' || value === 'security') return value;
+  return 'resume';
+}
+
+function formatEnum(value?: string) {
+  if (!value) return '—';
+  return value.replace(/_/g, ' ');
+}
 
 const PHONE_RE = /^\+?[0-9]{10,15}$/;
 
@@ -71,6 +107,16 @@ interface FormState {
   workLocation: string;
   dateOfBirth: string;
   dateOfJoining: string;
+  nationality: string;
+  personalEmail: string;
+  gender: Gender;
+  maritalStatus: MaritalStatus;
+  bankAccountNo: string;
+  bankName: string;
+  ifsc: string;
+  pan: string;
+  uan: string;
+  empCode: string;
 }
 
 function toFormState(profile: EmployeeProfile): FormState {
@@ -84,6 +130,16 @@ function toFormState(profile: EmployeeProfile): FormState {
     workLocation: profile.workLocation ?? '',
     dateOfBirth: toDateInputValue(profile.dateOfBirth),
     dateOfJoining: toDateInputValue(profile.dateOfJoining),
+    nationality: profile.nationality ?? '',
+    personalEmail: profile.personalEmail ?? '',
+    gender: profile.gender ?? '',
+    maritalStatus: profile.maritalStatus ?? '',
+    bankAccountNo: profile.bankAccountNo ?? '',
+    bankName: profile.bankName ?? '',
+    ifsc: profile.ifsc ?? '',
+    pan: profile.pan ?? '',
+    uan: profile.uan ?? '',
+    empCode: profile.empCode ?? '',
   };
 }
 
@@ -149,6 +205,14 @@ export default function Profile() {
   const isAdmin = isStaff;
   const paramId = searchParams.get('id');
   const targetId = isStaff && paramId ? paramId : user?.id;
+  const activeTab = parseProfileTab(searchParams.get('tab'));
+  const visibleTabs = PROFILE_TABS.filter((tab) => !tab.staffOnly || isStaff);
+
+  function tabHref(tab: ProfileTab) {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    return `/profile?${next.toString()}`;
+  }
 
   useEffect(() => {
     const idToLoad = targetId;
@@ -267,6 +331,15 @@ export default function Profile() {
       phone: normalizedPhone,
       address: form.address,
       profilePicture: form.profilePicture,
+      nationality: form.nationality,
+      personalEmail: form.personalEmail.trim() || undefined,
+      gender: form.gender || undefined,
+      maritalStatus: form.maritalStatus || undefined,
+      bankAccountNo: form.bankAccountNo,
+      bankName: form.bankName,
+      ifsc: form.ifsc,
+      pan: form.pan,
+      uan: form.uan,
     };
     if (isAdmin) {
       patch.name = form.name;
@@ -275,6 +348,7 @@ export default function Profile() {
       patch.workLocation = form.workLocation;
       patch.dateOfBirth = form.dateOfBirth || undefined;
       patch.dateOfJoining = form.dateOfJoining || undefined;
+      patch.empCode = form.empCode;
     }
 
     setSaving(true);
@@ -380,225 +454,359 @@ export default function Profile() {
   }
 
   const salary = profile.salary;
+  const canEdit = activeTab === 'resume' || activeTab === 'private';
+  const showSalaryTab = activeTab === 'salary';
 
   return (
     <Sidebar user={sidebarUser} items={items} commands={commands}>
       <div className="container page">
         <div className="orb page__orb" aria-hidden />
         <main className="profile-page">
-          <Card className="profile-hero">
-        <div className="profile-hero__avatar" aria-hidden>
-          {profile.profilePicture ? (
-            <img src={profile.profilePicture} alt="" loading="lazy" />
-          ) : (
-            initials(profile.name, profile.email)
-          )}
-        </div>
-        <div className="profile-hero__meta">
-          <h1 className="profile-hero__name">{profile.name || 'Unnamed employee'}</h1>
-          <p className="profile-hero__sub">
-            {profile.employeeId} · {profile.email}
-          </p>
-          <div className="profile-hero__badges">
-            <Badge>{profile.role}</Badge>
-            <Badge tone={profile.status === 'ACTIVE' ? 'success' : 'neutral'}>
-              {(profile.status ?? 'ACTIVE').replace('_', ' ')}
-            </Badge>
-          </div>
-        </div>
-        {!editing && (
-          <Button variant="outline" onClick={startEditing}>
-            Edit profile
-          </Button>
-        )}
-      </Card>
-
-      {editing && form ? (
-        <Card heading={isAdmin ? 'Edit employee' : 'Edit profile'}>
-          <form onSubmit={handleSave}>
-            <div className="profile-picture-row">
-              <div className="profile-hero__avatar profile-hero__avatar--sm" aria-hidden>
-                {form.profilePicture ? (
-                  <img src={form.profilePicture} alt="" loading="lazy" />
-                ) : (
-                  initials(form.name || profile.name, profile.email)
-                )}
-              </div>
-              <label className="btn btn--outline profile-picture-upload">
-                Choose picture
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePictureChange}
-                  hidden
-                />
-              </label>
-              {form.profilePicture && (
-                <Button variant="text" type="button" onClick={() => setForm({ ...form, profilePicture: '' })}>
-                  Remove
-                </Button>
+          <Card className="profile-hero animate-in">
+            <div className="profile-hero__avatar" aria-hidden>
+              {profile.profilePicture ? (
+                <img src={profile.profilePicture} alt="" loading="lazy" />
+              ) : (
+                initials(profile.name, profile.email)
               )}
             </div>
-
-            <Input label="Phone" value={form.phone} onChange={set('phone')} placeholder="+91 …" aria-invalid={form.phone ? !isValidPhone(form.phone) : undefined} />
-            {form.phone.trim() && !isValidPhone(form.phone) && (
-              <p className="form-error" style={{ marginTop: '-8px', marginBottom: '12px' }}>
-                Invalid phone — use 10–15 digits, optional leading + (e.g. +919876543210)
+            <div className="profile-hero__meta">
+              <h1 className="profile-hero__name">{profile.name || 'Unnamed employee'}</h1>
+              <p className="profile-hero__sub">
+                {profile.employeeId} · {profile.email}
               </p>
-            )}
-            <Input label="Address" value={form.address} onChange={set('address')} />
-
-            {isAdmin && (
-              <>
-                <Input label="Full name" value={form.name} onChange={set('name')} />
-                <Input label="Designation" value={form.designation} onChange={set('designation')} />
-                <Input label="Department" value={form.department} onChange={set('department')} />
-                <Input label="Work location" value={form.workLocation} onChange={set('workLocation')} />
-                <Input label="Date of birth" type="date" value={form.dateOfBirth} onChange={set('dateOfBirth')} />
-                <Input label="Date of joining" type="date" value={form.dateOfJoining} onChange={set('dateOfJoining')} />
-              </>
-            )}
-
-            {saveError && <p className="form-error">{saveError}</p>}
-            <div className="profile-form-actions">
-              <Button type="submit" disabled={saving || (!!form.phone.trim() && !isValidPhone(form.phone))}>
-                {saving ? 'Saving…' : 'Save changes'}
-              </Button>
-              <Button variant="text" type="button" onClick={cancelEditing} disabled={saving}>
-                Cancel
-              </Button>
+              <div className="profile-hero__badges">
+                <Badge>{profile.role}</Badge>
+                <Badge tone={profile.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                  {(profile.status ?? 'ACTIVE').replace('_', ' ')}
+                </Badge>
+              </div>
             </div>
-          </form>
-        </Card>
-      ) : (
-        <div className="profile-grid">
-          <Card heading="Personal details">
-            <dl className="detail-list">
-              <div className="detail-list__row">
-                <dt>Email</dt>
-                <dd>{profile.email}</dd>
-              </div>
-              <div className="detail-list__row">
-                <dt>Phone</dt>
-                <dd>{profile.phone || '—'}</dd>
-              </div>
-              <div className="detail-list__row">
-                <dt>Address</dt>
-                <dd>{profile.address || '—'}</dd>
-              </div>
-              <div className="detail-list__row">
-                <dt>Date of birth</dt>
-                <dd>{formatDate(profile.dateOfBirth)}</dd>
-              </div>
-            </dl>
+            {!editing && canEdit && (
+              <Button variant="outline" onClick={startEditing}>
+                Edit profile
+              </Button>
+            )}
           </Card>
 
-          <Card heading="Job details">
-            <dl className="detail-list">
-              <div className="detail-list__row">
-                <dt>Designation</dt>
-                <dd>{profile.designation || '—'}</dd>
-              </div>
-              <div className="detail-list__row">
-                <dt>Department</dt>
-                <dd>{profile.department || '—'}</dd>
-              </div>
-              <div className="detail-list__row">
-                <dt>Employment</dt>
-                <dd>{(profile.employmentType ?? 'FULL_TIME').replace('_', ' ')}</dd>
-              </div>
-              <div className="detail-list__row">
-                <dt>Date of joining</dt>
-                <dd>{formatDate(profile.dateOfJoining)}</dd>
-              </div>
-              <div className="detail-list__row">
-                <dt>Work location</dt>
-                <dd>{profile.workLocation || '—'}</dd>
-              </div>
-            </dl>
-          </Card>
+          <nav className="profile-tabs animate-in" aria-label="Profile sections" style={{ animationDelay: '0.06s' }}>
+            {visibleTabs.map((tab) => (
+              <Link
+                key={tab.id}
+                to={tabHref(tab.id)}
+                className={`profile-tabs__tab${activeTab === tab.id ? ' profile-tabs__tab--active' : ''}`}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+              >
+                {tab.label}
+              </Link>
+            ))}
+          </nav>
 
-          <Card heading="Salary structure">
-            <dl className="detail-list">
-              <div className="detail-list__row">
-                <dt>Basic salary</dt>
-                <dd>{money(salary?.basicSalary, salary?.currency)}</dd>
-              </div>
-              {Object.entries(salary?.allowances ?? {}).map(([key, value]) => (
-                <div className="detail-list__row" key={`a-${key}`}>
-                  <dt>{key.replace(/_/g, ' ')}</dt>
-                  <dd>+{money(value, salary?.currency)}</dd>
-                </div>
-              ))}
-              {Object.entries(salary?.deductions ?? {}).map(([key, value]) => (
-                <div className="detail-list__row" key={`d-${key}`}>
-                  <dt>{key.replace(/_/g, ' ')}</dt>
-                  <dd>−{money(value, salary?.currency)}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="profile-note">Read-only. Contact HR for corrections.</p>
-          </Card>
-
-          <Card heading="Documents">
-            {(() => {
-              const realDocs = (profile.documents ?? []).filter((d) => !/example\.(org|com)/i.test(d.url));
-              return realDocs.length > 0 ? (
-                <ul className="document-list">
-                  {realDocs.map((doc) => (
-                    <li key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-                      <span>
-                        <a href={doc.url} target="_blank" rel="noreferrer">
-                          {doc.name}
-                        </a>
-                        <span className="document-list__date" style={{ marginLeft: 8 }}>{formatDate(doc.uploadedAt)}</span>
-                      </span>
-                      <span style={{ display: 'inline-flex', gap: 8 }}>
-                        <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
-                          View
-                        </a>
-                        <a href={doc.url} download={doc.name} className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
-                          Download
-                        </a>
-                        <Button variant="text" onClick={() => void handleDocDelete(doc.id)} style={{ fontSize: 12 }}>
-                          Delete
+          <div className="profile-tab-panel animate-in" style={{ animationDelay: '0.1s' }}>
+            {activeTab === 'resume' && (
+              editing && form ? (
+                <Card heading={isAdmin ? 'Edit employee' : 'Edit profile'}>
+                  <form onSubmit={handleSave}>
+                    <div className="profile-picture-row">
+                      <div className="profile-hero__avatar profile-hero__avatar--sm" aria-hidden>
+                        {form.profilePicture ? (
+                          <img src={form.profilePicture} alt="" loading="lazy" />
+                        ) : (
+                          initials(form.name || profile.name, profile.email)
+                        )}
+                      </div>
+                      <label className="btn btn--outline profile-picture-upload">
+                        Choose picture
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePictureChange}
+                          hidden
+                        />
+                      </label>
+                      {form.profilePicture && (
+                        <Button variant="text" type="button" onClick={() => setForm({ ...form, profilePicture: '' })}>
+                          Remove
                         </Button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                      )}
+                    </div>
+
+                    <Input label="Phone" value={form.phone} onChange={set('phone')} placeholder="+91 …" aria-invalid={form.phone ? !isValidPhone(form.phone) : undefined} />
+                    {form.phone.trim() && !isValidPhone(form.phone) && (
+                      <p className="form-error profile-field-error">
+                        Invalid phone — use 10–15 digits, optional leading + (e.g. +919876543210)
+                      </p>
+                    )}
+
+                    {isAdmin && (
+                      <>
+                        <Input label="Full name" value={form.name} onChange={set('name')} />
+                        <Input label="Designation" value={form.designation} onChange={set('designation')} />
+                        <Input label="Department" value={form.department} onChange={set('department')} />
+                        <Input label="Work location" value={form.workLocation} onChange={set('workLocation')} />
+                      </>
+                    )}
+
+                    {saveError && <p className="form-error">{saveError}</p>}
+                    <div className="profile-form-actions">
+                      <Button type="submit" disabled={saving || (!!form.phone.trim() && !isValidPhone(form.phone))}>
+                        {saving ? 'Saving…' : 'Save changes'}
+                      </Button>
+                      <Button variant="text" type="button" onClick={cancelEditing} disabled={saving}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </Card>
               ) : (
-                <p className="profile-note">No documents on file. Uploaded ID proofs and offer letters will appear here (PDF/JPG/PNG, ≤5MB).</p>
-              );
-            })()}
-            <form onSubmit={handleDocUpload} style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--color-hairline-soft)', paddingTop: 12 }}>
-              <span className="field__label" style={{ fontWeight: 600, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--color-muted)' }}>Upload ID proof / PDF</span>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <input
-                  className="input"
-                  placeholder="Document name (e.g. Aadhaar)"
-                  value={docName}
-                  onChange={(e) => setDocName(e.target.value)}
-                  style={{ flex: '1 1 160px' }}
-                />
-                <input
-                  id="doc-file-input"
-                  type="file"
-                  accept=".pdf,image/jpeg,image/png,image/jpg"
-                  onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
-                  className="input"
-                  style={{ flex: '1 1 180px' }}
-                />
-                <Button type="submit" disabled={docUploading || !docFile}>
-                  {docUploading ? 'Uploading…' : 'Upload'}
-                </Button>
-              </div>
-              <span className="dash-sub">PDF, JPG, PNG ≤5MB — preview and download after upload. URLs served via /uploads and proxied in dev.</span>
-              {docError && <p className="form-error">{docError}</p>}
-            </form>
-          </Card>
-        </div>
-      )}
+                <div className="profile-grid">
+                  <Card heading="Contact">
+                    <dl className="detail-list">
+                      <div className="detail-list__row">
+                        <dt>Work email</dt>
+                        <dd>{profile.email}</dd>
+                      </div>
+                      <div className="detail-list__row">
+                        <dt>Phone</dt>
+                        <dd>{profile.phone || '—'}</dd>
+                      </div>
+                    </dl>
+                  </Card>
+
+                  <Card heading="Job details">
+                    <dl className="detail-list">
+                      <div className="detail-list__row">
+                        <dt>Designation</dt>
+                        <dd>{profile.designation || '—'}</dd>
+                      </div>
+                      <div className="detail-list__row">
+                        <dt>Department</dt>
+                        <dd>{profile.department || '—'}</dd>
+                      </div>
+                      <div className="detail-list__row">
+                        <dt>Employment</dt>
+                        <dd>{(profile.employmentType ?? 'FULL_TIME').replace('_', ' ')}</dd>
+                      </div>
+                      <div className="detail-list__row">
+                        <dt>Work location</dt>
+                        <dd>{profile.workLocation || '—'}</dd>
+                      </div>
+                    </dl>
+                  </Card>
+
+                  <Card heading="Documents" className="profile-grid__full">
+                    {(() => {
+                      const realDocs = (profile.documents ?? []).filter((d) => !/example\.(org|com)/i.test(d.url));
+                      return realDocs.length > 0 ? (
+                        <ul className="document-list">
+                          {realDocs.map((doc) => (
+                            <li key={doc.id}>
+                              <span className="document-list__main">
+                                <a href={doc.url} target="_blank" rel="noreferrer">
+                                  {doc.name}
+                                </a>
+                                <span className="document-list__date">{formatDate(doc.uploadedAt)}</span>
+                              </span>
+                              <span className="document-list__actions">
+                                <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn--outline document-list__btn">
+                                  View
+                                </a>
+                                <a href={doc.url} download={doc.name} className="btn btn--outline document-list__btn">
+                                  Download
+                                </a>
+                                <Button variant="text" onClick={() => void handleDocDelete(doc.id)} className="document-list__btn">
+                                  Delete
+                                </Button>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="profile-note">No documents on file. Uploaded ID proofs and offer letters will appear here (PDF/JPG/PNG, ≤5MB).</p>
+                      );
+                    })()}
+                    <form onSubmit={handleDocUpload} className="document-upload">
+                      <span className="document-upload__label">Upload ID proof / PDF</span>
+                      <div className="document-upload__row">
+                        <input
+                          className="input document-upload__name"
+                          placeholder="Document name (e.g. Aadhaar)"
+                          value={docName}
+                          onChange={(e) => setDocName(e.target.value)}
+                        />
+                        <input
+                          id="doc-file-input"
+                          type="file"
+                          accept=".pdf,image/jpeg,image/png,image/jpg"
+                          onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
+                          className="input document-upload__file"
+                        />
+                        <Button type="submit" disabled={docUploading || !docFile}>
+                          {docUploading ? 'Uploading…' : 'Upload'}
+                        </Button>
+                      </div>
+                      <span className="profile-note">PDF, JPG, PNG ≤5MB — preview and download after upload.</span>
+                      {docError && <p className="form-error">{docError}</p>}
+                    </form>
+                  </Card>
+                </div>
+              )
+            )}
+
+            {activeTab === 'private' && (
+              editing && form ? (
+                <Card heading="Edit private info">
+                  <form onSubmit={handleSave}>
+                    <Input label="Address" value={form.address} onChange={set('address')} />
+                    <Input label="Date of birth" type="date" value={form.dateOfBirth} onChange={set('dateOfBirth')} disabled={!isAdmin} />
+                    <Input label="Nationality" value={form.nationality} onChange={set('nationality')} />
+                    <Input label="Personal email" type="email" value={form.personalEmail} onChange={set('personalEmail')} />
+                    <label className="field">
+                      <span className="field__label">Gender</span>
+                      <select className="input" value={form.gender} onChange={set('gender')}>
+                        {GENDER_OPTIONS.map((opt) => (
+                          <option key={opt.value || 'empty'} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span className="field__label">Marital status</span>
+                      <select className="input" value={form.maritalStatus} onChange={set('maritalStatus')}>
+                        {MARITAL_OPTIONS.map((opt) => (
+                          <option key={opt.value || 'empty'} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <Input label="Date of joining" type="date" value={form.dateOfJoining} onChange={set('dateOfJoining')} disabled={!isAdmin} />
+
+                    <p className="profile-section-label">Bank & statutory</p>
+                    <Input label="Account no." value={form.bankAccountNo} onChange={set('bankAccountNo')} />
+                    <Input label="Bank name" value={form.bankName} onChange={set('bankName')} />
+                    <Input label="IFSC" value={form.ifsc} onChange={set('ifsc')} />
+                    <Input label="PAN" value={form.pan} onChange={set('pan')} />
+                    <Input label="UAN" value={form.uan} onChange={set('uan')} />
+                    <Input label="Emp code" value={form.empCode} onChange={set('empCode')} disabled={!isAdmin} />
+
+                    {saveError && <p className="form-error">{saveError}</p>}
+                    <div className="profile-form-actions">
+                      <Button type="submit" disabled={saving}>
+                        {saving ? 'Saving…' : 'Save changes'}
+                      </Button>
+                      <Button variant="text" type="button" onClick={cancelEditing} disabled={saving}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </Card>
+              ) : (
+                <Card heading="Private information">
+                  <dl className="detail-list">
+                    <div className="detail-list__row">
+                      <dt>Date of birth</dt>
+                      <dd>{formatDate(profile.dateOfBirth)}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Address</dt>
+                      <dd>{profile.address || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Nationality</dt>
+                      <dd>{profile.nationality || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Personal email</dt>
+                      <dd>{profile.personalEmail || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Gender</dt>
+                      <dd>{formatEnum(profile.gender)}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Marital status</dt>
+                      <dd>{formatEnum(profile.maritalStatus)}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Date of joining</dt>
+                      <dd>{formatDate(profile.dateOfJoining)}</dd>
+                    </div>
+                  </dl>
+
+                  <p className="profile-section-label">Bank & statutory</p>
+                  <dl className="detail-list">
+                    <div className="detail-list__row">
+                      <dt>Account no.</dt>
+                      <dd>{profile.bankAccountNo || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Bank name</dt>
+                      <dd>{profile.bankName || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>IFSC</dt>
+                      <dd>{profile.ifsc || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>PAN</dt>
+                      <dd>{profile.pan || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>UAN</dt>
+                      <dd>{profile.uan || '—'}</dd>
+                    </div>
+                    <div className="detail-list__row">
+                      <dt>Emp code</dt>
+                      <dd>{profile.empCode || profile.employeeId || '—'}</dd>
+                    </div>
+                  </dl>
+                </Card>
+              )
+            )}
+
+            {showSalaryTab && (
+              isStaff ? (
+                <Card heading="Salary structure">
+                  <dl className="detail-list">
+                    <div className="detail-list__row">
+                      <dt>Basic salary</dt>
+                      <dd>{money(salary?.basicSalary, salary?.currency)}</dd>
+                    </div>
+                    {Object.entries(salary?.allowances ?? {}).map(([key, value]) => (
+                      <div className="detail-list__row" key={`a-${key}`}>
+                        <dt>{key.replace(/_/g, ' ')}</dt>
+                        <dd>+{money(value, salary?.currency)}</dd>
+                      </div>
+                    ))}
+                    {Object.entries(salary?.deductions ?? {}).map(([key, value]) => (
+                      <div className="detail-list__row" key={`d-${key}`}>
+                        <dt>{key.replace(/_/g, ' ')}</dt>
+                        <dd>−{money(value, salary?.currency)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="profile-note">HR/Admin view. Update via payroll tools if corrections are needed.</p>
+                </Card>
+              ) : (
+                <Card heading="Salary information">
+                  <p className="profile-note">
+                    Salary details are managed by HR and are not visible on your profile. Contact HR for compensation questions.
+                  </p>
+                </Card>
+              )
+            )}
+
+            {activeTab === 'security' && (
+              <Card heading="Account security">
+                <p className="profile-note">
+                  Keep your account secure with a strong, unique password. You will be asked for your current password before setting a new one.
+                </p>
+                <div className="profile-form-actions">
+                  <Link to="/change-password" className="btn btn--outline">
+                    Change password
+                  </Link>
+                </div>
+              </Card>
+            )}
+          </div>
         </main>
       </div>
     </Sidebar>
