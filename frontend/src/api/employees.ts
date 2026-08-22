@@ -1,8 +1,12 @@
 import { api } from './client';
-import type { EmployeeProfile } from '../types';
+import type { EmployeeProfile, User } from '../types';
 
 export function getEmployee(id: string) {
   return api.get<EmployeeProfile>(`/employees/${id}`);
+}
+
+export function listEmployees() {
+  return api.get<User[]>('/employees');
 }
 
 export type EmployeePatch = Partial<

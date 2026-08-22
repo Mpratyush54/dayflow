@@ -1,9 +1,24 @@
 import { Router } from 'express';
+import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
+import {
+  getMyPayroll,
+  getAllPayroll,
+  updatePayroll,
+} from '../controllers/payroll.controller.js';
 
 const router = Router();
 
-// GET   /api/payroll            own salary details (read-only)
-// GET   /api/payroll/all        (admin) payroll of all employees
-// PATCH /api/payroll/:employeeId  (admin) update salary structure
+// All payroll routes require a valid token; salary structures are read-only
+// for employees — only HR/ADMIN can write.
+router.use(requireAuth);
+
+// GET   /api/payroll          own salary structure (read-only)
+router.get('/', getMyPayroll);
+
+// GET   /api/payroll/all      all salary structures (HR/ADMIN)
+router.get('/all', requireRole('HR', 'ADMIN'), getAllPayroll);
+
+// PATCH /api/payroll/:userId  update a structure with revision trail (HR/ADMIN)
+router.patch('/:userId', requireRole('HR', 'ADMIN'), updatePayroll);
 
 export default router;

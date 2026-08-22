@@ -117,9 +117,34 @@ export interface LeaveRequest {
   createdAt?: string;
 }
 
+export interface EmployeeRef {
+  id: string;
+  employeeId: string;
+  email: string;
+  name?: string;
+  role: Role;
+}
+
+export interface PayrollRevision {
+  at: string;
+  changedBy?: string | null;
+  previous?: SalaryStructure;
+}
+
 export interface Payroll {
-  userId: string;
+  id: string;
+  /** String in own record; populated EmployeeRef in /payroll/all */
+  userId: string | EmployeeRef;
   basicSalary: number;
+  currency: string;
   allowances?: Record<string, number>;
   deductions?: Record<string, number>;
+  effectiveFrom?: string;
+  revisions?: PayrollRevision[];
+  updatedAt?: string;
+  // Computed server-side — clients never do the math
+  totalAllowances: number;
+  totalDeductions: number;
+  grossPay: number;
+  netPay: number;
 }
