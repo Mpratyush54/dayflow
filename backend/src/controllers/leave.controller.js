@@ -5,6 +5,11 @@ import { HttpError } from '../utils/httpError.js';
 import { notifyLeaveDecision, notifyNewLeaveRequest } from '../utils/mailer.js';
 
 const LEAVE_TYPES = ['PAID', 'SICK', 'UNPAID'];
+const LEAVE_ENTITLEMENTS = { PAID: 18, SICK: 10, UNPAID: 5 };
+
+function daysInclusiveUTC(start, end) {
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
 
 // Malformed ids would throw a CastError (500) in findById
 function assertValidId(id) {
@@ -58,6 +63,24 @@ export async function applyLeave(req, res) {
       'You already have a pending or approved leave overlapping these dates',
       'LEAVE_OVERLAP',
     );
+  }
+
+  const entitlement = LEAVE_ENTITLEMENTS[type];
+  if (entitlement !== undefined) {
+    const requestedDays = daysInclusiveUTC(start, end);
+    const existingLeaves = await LeaveRequest.find({
+      userId: req.user.id,
+      type,
+      status: { $in: ['PENDING', 'APPROVED'] },
+    }).select('startDate endDate');
+    const usedDays = existingLeaves.reduce((sum, l) => sum + daysInclusiveUTC(l.startDate, l.endDate), 0);
+    if (usedDays + requestedDays > entitlement) {
+      throw new HttpError(
+        400,
+        `Insufficient ${type} leave balance: ${entitlement - usedDays} day(s) remaining, ${requestedDays} requested`,
+        'INSUFFICIENT_BALANCE',
+      );
+    }
   }
 
   const leave = await LeaveRequest.create({
