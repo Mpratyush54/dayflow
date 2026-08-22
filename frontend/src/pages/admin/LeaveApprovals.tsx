@@ -110,7 +110,7 @@ export default function LeaveApprovals() {
     <Sidebar
       user={{ name: 'Meera T.', role: 'HR · Admin', initials: 'MT' }}
       items={[
-        { to: '/admin', label: 'Overview', icon: '◧' },
+        { to: '/admin', label: 'Overview', icon: '◧', end: true },
         { to: '/admin/employees', label: 'Employees', icon: '👥' },
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓', ...(pending > 0 ? { badge: String(pending) } : {}) },

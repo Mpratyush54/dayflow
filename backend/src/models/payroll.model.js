@@ -47,9 +47,15 @@ const payrollSchema = new mongoose.Schema(
         } else {
           ret.userId = ret.userId?.toString() ?? null;
         }
-        // Net pay is computed server-side so clients never do the math
-        ret.totalAllowances = Object.values(ret.allowances ?? {}).reduce((s, v) => s + v, 0);
-        ret.totalDeductions = Object.values(ret.deductions ?? {}).reduce((s, v) => s + v, 0);
+        // Net pay is computed server-side so clients never do the math — handle Map or plain object
+        const toVals = (v) => {
+          if (!v) return [];
+          if (v instanceof Map) return Array.from(v.values());
+          if (typeof v === 'object') return Object.values(v);
+          return [];
+        };
+        ret.totalAllowances = toVals(ret.allowances).reduce((s, v) => s + v, 0);
+        ret.totalDeductions = toVals(ret.deductions).reduce((s, v) => s + v, 0);
         ret.grossPay = ret.basicSalary + ret.totalAllowances;
         ret.netPay = ret.grossPay - ret.totalDeductions;
         delete ret._id;

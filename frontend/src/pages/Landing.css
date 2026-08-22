@@ -104,6 +104,15 @@
   display: flex;
   gap: var(--space-sm);
   flex-wrap: wrap;
+  align-items: center;
+}
+.landing-hero__actions .btn {
+  flex: 0 1 auto;
+  min-width: 140px;
+  white-space: nowrap;
+}
+.landing-nav__inner {
+  flex-wrap: wrap;
 }
 .landing-hero__btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .landing-hero__hint {
@@ -347,4 +356,8 @@
   .landing-features { grid-template-columns: 1fr; }
   .landing-stats { flex-direction: column; }
   .landing-stats__divider { display: none; }
+  .landing-hero__actions .btn { flex: 1 1 100%; }
+  .landing-nav__inner { gap: var(--space-sm); }
+  .landing-nav__cta { margin-left: auto; }
+  .landing-role { min-height: auto; }
 }

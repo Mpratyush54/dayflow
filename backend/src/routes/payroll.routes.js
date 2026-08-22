@@ -20,6 +20,7 @@ router.get('/', getMyPayroll);
 router.get('/all', requireRole('HR', 'ADMIN'), getAllPayroll);
 
 // GET   /api/payroll/slip     PDF salary slip (?month=, self or HR/ADMIN ?userId=)
+// Must be before /:userId param route — otherwise "slip" is captured as userId and 404s
 router.get('/slip', slip);
 
 // PATCH /api/payroll/:userId  update a structure with revision trail (HR/ADMIN)
