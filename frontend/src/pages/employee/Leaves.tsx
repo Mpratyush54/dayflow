@@ -152,6 +152,7 @@ export default function Leaves() {
                   </div>
                   <Input label="From" type="date" value={form.startDate} onChange={set('startDate')} min={todayISO} />
                   <Input label="To" type="date" value={form.endDate} onChange={set('endDate')} min={form.startDate || todayISO} />
+                  <p className="dash-sub" style={{ marginTop: -8, marginBottom: 12 }}>Past dates are not allowed for employees.</p>
                   <div className="field">
                     <label className="field__label" htmlFor="leave-remarks">Remarks</label>
                     <textarea

@@ -13,14 +13,14 @@ body,
 }
 
 html {
+  overflow-y: auto;
   overflow-x: clip;
+  scrollbar-gutter: stable;
 }
 
 body {
-  overflow-x: clip;
-}
-
-body {
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--color-canvas);
   color: var(--color-body);
   font: var(--type-body-md);
@@ -73,15 +73,16 @@ a {
 }
 
 /* Atmospheric gradient orb — the brand's only "color" moment.
-   Place behind content: <div className="orb" aria-hidden /> */
+    Place behind content: <div className="orb" aria-hidden /> */
 .orb {
-  position: absolute;
+  position: fixed;
   width: 420px;
   height: 420px;
   border-radius: var(--radius-full, 50%);
   filter: blur(80px);
   opacity: 0.55;
   pointer-events: none;
+  z-index: 0;
   background: radial-gradient(
     circle at 30% 30%,
     var(--color-gradient-mint),
@@ -125,6 +126,17 @@ a {
 /* Staggered entrance for cards and dashboard sections */
 .animate-in {
   animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Scroll fix — body is the single scroll container; shell__main must not clip */
+.page,
+.container {
+  overflow: visible;
+}
+
+.shell__main {
+  overflow: visible;
+  overflow-y: visible;
 }
 
 /* Responsive base (issue #33) */

@@ -15,4 +15,19 @@ export default defineConfig({
       '/api': 'http://localhost:5000',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react-router')) return 'router';
+            if (id.includes('react')) return 'vendor';
+            return 'vendor';
+          }
+          if (id.includes('pages/admin/') || id.includes('pages/employee/')) return 'pages';
+          if (id.includes('components/charts')) return 'charts';
+        },
+      },
+    },
+  },
 })
