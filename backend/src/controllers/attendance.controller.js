@@ -20,6 +20,24 @@ function dayRecordJson(record) {
   return out;
 }
 
+// SSE clients for team presence updates
+const sseClients = new Set();
+
+async function fetchStillIn() {
+  const today = dateKey();
+  return Attendance.countDocuments({ date: today, checkIn: { $ne: null }, checkOut: null });
+}
+
+async function broadcastStillIn() {
+  try {
+    const stillIn = await fetchStillIn();
+    const payload = `data: ${JSON.stringify({ stillIn })}\n\n`;
+    for (const res of sseClients) {
+      try { res.write(payload); } catch { /* client gone */ }
+    }
+  } catch { /* ignore broadcast errors */ }
+}
+
 // POST /api/attendance/checkin — start today's record
 export async function checkin(req, res) {
   const today = dateKey();
@@ -36,6 +54,8 @@ export async function checkin(req, res) {
     date: today,
     checkIn: new Date(),
   });
+  // Notify SSE listeners asynchronously (do not block response)
+  broadcastStillIn().catch(() => {});
   res.status(201).json(dayRecordJson(record));
 }
 
@@ -55,7 +75,49 @@ export async function checkout(req, res) {
   record.status = hours >= FULL_DAY_MIN_HOURS ? 'PRESENT' : 'HALF_DAY';
   await record.save();
 
+  broadcastStillIn().catch(() => {});
   res.json(dayRecordJson(record));
+}
+
+// GET /api/attendance/stream — SSE for team presence (`stillIn` count)
+export async function stream(req, res) {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  // Send initial retry hint and comment to establish stream
+  res.write(': connected\n\n');
+
+  sseClients.add(res);
+
+  const send = async () => {
+    try {
+      const stillIn = await fetchStillIn();
+      res.write(`data: ${JSON.stringify({ stillIn })}\n\n`);
+    } catch {
+      // keep stream alive even if DB errors
+    }
+  };
+
+  // Immediate push then every 5s
+  await send();
+  const interval = setInterval(send, 5000);
+  // Keep-alive comment every 15s to prevent proxy timeouts
+  const keepAlive = setInterval(() => {
+    try { res.write(': keepalive\n\n'); } catch {}
+  }, 15000);
+
+  const cleanup = () => {
+    clearInterval(interval);
+    clearInterval(keepAlive);
+    sseClients.delete(res);
+    try { res.end(); } catch {}
+  };
+
+  req.on('close', cleanup);
+  req.on('error', cleanup);
 }
 
 function shiftDate(key, days) {

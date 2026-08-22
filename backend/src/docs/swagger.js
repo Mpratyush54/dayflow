@@ -338,6 +338,24 @@ export const swaggerSpec = {
         },
       },
     },
+    '/api/attendance/stream': {
+      get: {
+        summary: 'SSE live team presence (HR/ADMIN)',
+        description:
+          'Server-Sent Events stream. Sends `data: {"stillIn": number}` every 5s and immediately after any check-in/out. ' +
+          'Requires Bearer token in Authorization header or `?token=` query param (EventSource cannot set headers). ' +
+          'Fallback to polling GET /api/attendance/team when SSE unavailable.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: 'text/event-stream — each message is JSON with stillIn count',
+            content: { 'text/event-stream': { schema: { type: 'string', example: 'data: {"stillIn": 3}\n\n' } } },
+          },
+          401: { description: 'Missing or invalid token' },
+          403: { description: 'Forbidden (EMPLOYEE role)' },
+        },
+      },
+    },
     '/api/leaves': {
       get: {
         summary: 'Own leave requests',

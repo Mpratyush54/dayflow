@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
-import { checkin, checkout, getMine, getTeam, report } from '../controllers/attendance.controller.js';
+import { checkin, checkout, getMine, getTeam, report, stream } from '../controllers/attendance.controller.js';
 
 const router = Router();
+
+// GET  /api/attendance/stream    SSE live presence (HR/ADMIN) — must be before /team
+router.get('/stream', requireAuth, requireRole('HR', 'ADMIN'), stream);
 
 // GET  /api/attendance           own daily/weekly attendance (+ summary)
 router.get('/', requireAuth, getMine);
