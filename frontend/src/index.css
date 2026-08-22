@@ -14,3 +14,21 @@
 .btn--block {
   width: 100%;
 }
+
+/* Dev-only bypass link under the auth pages — remove when auth lands */
+.dev-bypass {
+  font: var(--type-caption);
+  color: var(--color-muted);
+  text-align: center;
+  margin: var(--space-base) 0;
+}
+
+.dev-bypass__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-ink);
+  text-decoration: underline;
+  cursor: pointer;
+}

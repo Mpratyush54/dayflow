@@ -11,6 +11,9 @@ import AdminAttendance from './pages/admin/Attendance';
 import LeaveApprovals from './pages/admin/LeaveApprovals';
 import Payroll from './pages/admin/Payroll';
 
+// Sign-in/sign-up are owned by the auth workstream. Until that lands, a dev
+// link under the auth pages opens the employee profile using a dev token
+// (see src/utils/devUser.ts).
 export default function App() {
   return (
     <BrowserRouter>
