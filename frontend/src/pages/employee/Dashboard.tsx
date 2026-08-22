@@ -68,10 +68,10 @@ export default function EmployeeDashboard() {
     <Sidebar
       user={{ name: 'Pratyush M.', role: 'Employee · EMP-0042', initials: 'PM' }}
       items={[
-        { to: '/dashboard', label: 'Dashboard', icon: '◧' },
+        { to: '/dashboard', label: 'Dashboard', icon: '◧', end: true },
         { to: '/profile', label: 'Profile', icon: '👤' },
         { to: '/attendance', label: 'Attendance', icon: '🗓' },
-        { to: '/leaves', label: 'Leave', icon: '🌴', badge: '1' },
+        { to: '/leaves', label: 'Leave', icon: '🌴' },
         { to: '/payslip', label: 'Payslip', icon: '💵' },
       ]}
       commands={[

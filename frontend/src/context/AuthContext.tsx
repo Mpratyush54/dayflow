@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -11,20 +9,9 @@ import {
   authApi,
   refreshAccessToken,
   setAccessToken,
-  type SignUpPayload,
-  type SignUpResponse,
 } from '../api/client';
 import type { User } from '../types';
-
-interface AuthContextValue {
-  user: User | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<User>;
-  signUp: (payload: SignUpPayload) => Promise<SignUpResponse>;
-  signOut: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext } from './auth-context';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -55,10 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await authApi.signIn({ email, password });
     setAccessToken(data.accessToken);
     setUser(data.user);
-    return data.user;
+    return data;
   }, []);
-
-  const signUp = useCallback((payload: SignUpPayload) => authApi.signUp(payload), []);
 
   const signOut = useCallback(async () => {
     try {
@@ -70,15 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signUp, signOut }),
-    [user, loading, signIn, signUp, signOut],
+    () => ({ user, loading, signIn, signOut }),
+    [user, loading, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
-}

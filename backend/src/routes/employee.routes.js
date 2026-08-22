@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
 import {
+  createEmployee,
   listEmployees,
   getEmployee,
   updateEmployee,
@@ -10,6 +11,10 @@ const router = Router();
 
 // All employee routes require a valid token
 router.use(requireAuth);
+
+// POST /api/employees — create an employee (HR/ADMIN only);
+// employeeId + one-time password are system-generated
+router.post('/', requireRole('HR', 'ADMIN'), createEmployee);
 
 // GET /api/employees — list employees (admin)
 router.get('/', requireRole('HR', 'ADMIN'), listEmployees);

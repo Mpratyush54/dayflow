@@ -1,4 +1,12 @@
+import bcrypt from 'bcryptjs';
 import User, { USER_PUBLIC_FIELDS } from '../models/user.model.js';
+import { env } from '../config/env.js';
+import { createEmployeeSchema } from '../utils/validation.js';
+import { generateVerificationToken } from '../utils/tokens.js';
+import { nextEmployeeId } from '../utils/employeeId.js';
+import { generatePassword } from '../utils/password.js';
+
+const SALT_ROUNDS = 12;
 
 // Fields an EMPLOYEE may change on their own profile (SRS 3.3.2)
 const SELF_EDITABLE_FIELDS = ['phone', 'address', 'profilePicture'];
@@ -9,6 +17,61 @@ function canViewProfile(requester, targetId) {
     requester.role === 'HR' ||
     requester.role === 'ADMIN'
   );
+}
+
+// POST /api/employees — HR/ADMIN creates an employee (replaces public signup).
+// Employee ID and the one-time password are generated server-side:
+//   ID: OI + <2 first-name letters><2 last-name letters> + <join year> + <4-digit year serial>
+// The password is returned exactly once so the HR officer can hand it over.
+export async function createEmployee(req, res, next) {
+  try {
+    const data = createEmployeeSchema.parse(req.body);
+
+    const existing = await User.findOne({ email: data.email }).select('email').lean();
+    if (existing) {
+      return res.status(409).json({ message: 'An account with this email already exists' });
+    }
+
+    const { token, tokenHash, expiresAt } = generateVerificationToken();
+    const verificationUrl = `${env.clientUrl}/verify-email?token=${token}`;
+
+    // Retry on serial collisions from concurrent creations (unique index backs this up)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const employeeId = await nextEmployeeId(data.firstName, data.lastName);
+      const password = generatePassword();
+      try {
+        const user = await User.create({
+          employeeId,
+          name: `${data.firstName} ${data.lastName}`.trim(),
+          email: data.email,
+          passwordHash: await bcrypt.hash(password, SALT_ROUNDS),
+          role: data.role,
+          isVerified: false,
+          mustChangePassword: true,
+          verificationTokenHash: tokenHash,
+          verificationTokenExpires: expiresAt,
+        });
+        console.log(`[employees] Created ${employeeId} for ${data.email}: ${verificationUrl}`);
+        return res.status(201).json({
+          message: `Employee ${employeeId} created. Share the one-time password — it will not be shown again.`,
+          employeeId,
+          generatedPassword: password,
+          user: user.toJSON(),
+          ...(env.isProd ? {} : { verificationUrl }),
+        });
+      } catch (err) {
+        const duplicate = err.code === 11000;
+        if (!duplicate) throw err;
+        // Collided on employeeId or email between the check and the insert
+        if (err.keyPattern?.email) {
+          return res.status(409).json({ message: 'An account with this email already exists' });
+        }
+      }
+    }
+    return res.status(503).json({ message: 'Could not allocate a unique Employee ID, please retry' });
+  } catch (err) {
+    next(err);
+  }
 }
 
 // GET /api/employees — list employees (HR/ADMIN)

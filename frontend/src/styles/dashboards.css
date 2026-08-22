@@ -751,6 +751,92 @@
   animation: orb-drift 18s ease-in-out infinite alternate-reverse;
 }
 
+/* Modal dialog */
+.modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(12, 10, 9, 0.35);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  animation: fade-in 0.15s ease both;
+}
+
+.modal {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 2 * var(--space-lg));
+  overflow-y: auto;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  box-shadow: 0 24px 80px rgba(12, 10, 9, 0.25);
+  animation: fade-up 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modal__title {
+  font: var(--type-display-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.modal__dark {
+  background: var(--color-surface-dark);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-base);
+  margin: var(--space-base) 0;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-base);
+}
+
+/* Create-employee helpers */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-base);
+}
+
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-surface-dark-elevated);
+}
+
+.copy-row__label {
+  font: var(--type-caption);
+  color: var(--color-on-dark-soft);
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.copy-row__value {
+  flex: 1;
+  font: 500 14px/1.4 ui-monospace, monospace;
+  color: var(--color-on-dark);
+  background: var(--color-surface-dark-elevated);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  word-break: break-all;
+}
+
+.id-format {
+  display: inline-block;
+  font: 500 15px/1 ui-monospace, monospace;
+  letter-spacing: 1px;
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-pill);
+  padding: 10px 16px;
+}
+
 /* Entrance animations */
 .quick-cards .card,
 .stat-row .card,

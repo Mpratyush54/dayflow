@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/layout/AuthLayout';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -18,8 +18,14 @@ export default function SignIn() {
     setError('');
     setSubmitting(true);
     try {
-      const user = await signIn(email, password);
-      navigate(user.role === 'EMPLOYEE' ? '/dashboard' : '/admin');
+      const { user, mustChangePassword } = await signIn(email, password);
+      navigate(
+        mustChangePassword
+          ? '/change-password'
+          : user.role === 'EMPLOYEE'
+            ? '/dashboard'
+            : '/admin',
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign in — try again');
     } finally {
@@ -38,7 +44,7 @@ export default function SignIn() {
         </Button>
       </form>
       <p className="auth__alt">
-        Don&apos;t have an account? <Link to="/signup">Sign up</Link>
+        Don&apos;t have an account? Accounts are created by HR — ask your HR officer.
       </p>
     </AuthLayout>
   );

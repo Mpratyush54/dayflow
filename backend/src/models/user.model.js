@@ -64,6 +64,9 @@ const userSchema = new mongoose.Schema(
       default: 'EMPLOYEE',
     },
     isVerified: { type: Boolean, default: false },
+    // Set when HR creates the account with a system-generated password;
+    // cleared on first successful password change
+    mustChangePassword: { type: Boolean, default: false, select: true },
     verificationTokenHash: { type: String, select: false },
     verificationTokenExpires: { type: Date, select: false },
 

@@ -23,10 +23,11 @@ export interface User {
   email: string;
   role: Role;
   name?: string;
+  isVerified?: boolean;
+  mustChangePassword?: boolean;
   phone?: string;
   address?: string;
   profilePicture?: string;
-  isVerified?: boolean;
 }
 
 export interface EmployeeProfile extends User {

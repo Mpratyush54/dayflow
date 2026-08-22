@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../../context/theme-context';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import CommandPalette from '../common/CommandPalette';
 import type { Command } from '../common/CommandPalette';
 
@@ -10,6 +10,9 @@ export interface NavItem {
   label: string;
   icon: string;
   badge?: string;
+  /** Exact match — set on overview/dashboard links so they don't stay
+   *  highlighted while a nested route (e.g. /admin/employees) is open */
+  end?: boolean;
 }
 
 interface SidebarProps {
@@ -57,6 +60,7 @@ export default function Sidebar({ items, user, commands = [], children }: Sideba
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) => `sidebar__link ${isActive ? 'is-active' : ''}`}
             >
               <span className="sidebar__icon" aria-hidden>{item.icon}</span>
