@@ -126,8 +126,55 @@ function shiftDate(key, days) {
   return dateKey(d);
 }
 
+const _ATT_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
 // GET /api/attendance?days=7&date=YYYY-MM-DD — own daily/weekly view + summary
+// Also supports ?month=YYYY-MM for full-month day-wise view
 export async function getMine(req, res) {
+  if (typeof req.query.month === 'string' && _ATT_MONTH_RE.test(req.query.month)) {
+    const month = req.query.month;
+    const todayKeyStr = dateKey();
+    const [y, m] = month.split('-').map(Number);
+    const first = new Date(y, m - 1, 1);
+    const last = new Date(y, m, 0);
+    const isCurrentMonth = month === todayKeyStr.slice(0, 7);
+    const toDate = isCurrentMonth ? new Date() : last;
+    const cappedLast = toDate < last ? toDate : last;
+    const from = dateKey(first);
+    const to = dateKey(cappedLast);
+    const daysInWindow = Math.round((cappedLast - first) / 86400000) + 1;
+    const [records, leaveDays] = await Promise.all([
+      Attendance.find({ user: req.user._id, date: { $gte: from, $lte: to } }).sort({ date: 1 }),
+      getApprovedLeaveDays([req.user._id], from, to),
+    ]);
+    const myLeaveDays = leaveDays.get(req.user._id.toString()) ?? new Set();
+    const byDate = new Map(records.map((r) => [r.date, dayRecordJson(r)]));
+    const dayList = [];
+    for (let i = 0; i < daysInWindow; i++) {
+      const key = shiftDate(from, i);
+      if (byDate.has(key)) dayList.push(byDate.get(key));
+      else dayList.push({
+        date: key,
+        weekday: new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' }),
+        checkIn: null,
+        checkOut: null,
+        status: myLeaveDays.has(key) ? 'LEAVE' : null,
+        workedHours: 0,
+      });
+    }
+    const isWorkday = (key) => ![0, 6].includes(new Date(`${key}T00:00:00`).getDay());
+    const workdays = dayList.filter((d) => isWorkday(d.date)).length;
+    const present = dayList.filter((d) => d.status === 'PRESENT').length;
+    const halfDay = dayList.filter((d) => d.status === 'HALF_DAY').length;
+    const leave = dayList.filter((d) => d.status === 'LEAVE' && isWorkday(d.date)).length;
+    const hours = Math.round(dayList.reduce((sum, d) => sum + (d.workedHours ?? 0), 0) * 10) / 10;
+    const rate = workdays === 0 ? null : Math.round(((present + halfDay * 0.5) / workdays) * 100);
+    return res.json({
+      range: { from, to, days: daysInWindow },
+      days: dayList,
+      summary: { workdays, present, halfDay, leave, absent: Math.max(workdays - present - halfDay - leave, 0), hours, rate },
+    });
+  }
   const days = Math.min(Math.max(Number(req.query.days ?? 7) || 7, 1), 31);
   let to = dateKey();
   if (typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) {
