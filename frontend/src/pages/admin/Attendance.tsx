@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
@@ -32,7 +33,9 @@ function todayKey() {
 
 export default function AttendanceOverview() {
   const { toasts, push } = useToasts();
-  const [date, setDate] = useState(todayKey);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramDate = searchParams.get('date');
+  const date = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : todayKey();
   const [data, setData] = useState<TeamAttendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -110,10 +113,14 @@ export default function AttendanceOverview() {
                   style={{ width: 'auto', height: 'var(--button-height)' }}
                   value={date}
                   max={todayKey()}
-                  onChange={(e) => setDate(e.target.value || todayKey())}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) setSearchParams({ date: v });
+                    else setSearchParams({});
+                  }}
                   aria-label="Pick a date"
                 />
-                <Button variant="outline" onClick={() => { setDate(todayKey()); push('Showing today'); }}>Today</Button>
+                <Button variant="outline" onClick={() => { setSearchParams({}); push('Showing today'); }}>Today</Button>
               </div>
             </div>
 
