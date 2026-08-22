@@ -11,6 +11,7 @@ import { useDelayedReady } from '../../hooks/useDelayedReady';
 import { applyLeave, getMyLeaves } from '../../api/leaves';
 import type { ApplyLeaveInput } from '../../api/leaves';
 import type { LeaveRequest, LeaveStatus, LeaveType } from '../../types';
+import './Leaves.css';
 
 // Entitlement totals are mocked per issue #9 — real policy wiring lands with #11
 const BALANCE_TOTALS: { type: LeaveType; total: number; tone: string }[] = [
@@ -26,11 +27,11 @@ const STATUS_TONE: Record<LeaveStatus, 'success' | 'error' | 'neutral'> = {
 };
 
 function daysInclusive(start: string, end: string) {
-  return Math.round((+new Date(end) - +new Date(start)) / 86_400_000) + 1;
+  return Math.round((+new Date(`${end}T00:00:00`) - +new Date(`${start}T00:00:00`)) / 86_400_000) + 1;
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString(undefined, {
+  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'short',
   });
@@ -64,6 +65,25 @@ export default function Leaves() {
       .filter((l) => l.type === type && l.status !== 'REJECTED')
       .reduce((sum, l) => sum + daysInclusive(l.startDate, l.endDate), 0),
   }));
+
+  // Live forecast — mirrors backend entitlement (server minus PENDING+APPROVED)
+  const entitlementForType = BALANCE_TOTALS.find((b) => b.type === form.type)?.total ?? 0;
+  const usedForType = usedByType.find((u) => u.type === form.type)?.used ?? 0;
+  const left = Math.max(entitlementForType - usedForType, 0);
+  const hasValidRange = Boolean(form.startDate && form.endDate && form.endDate >= form.startDate);
+  const requestedDays = hasValidRange ? daysInclusive(form.startDate, form.endDate) : 0;
+  const forecastLeft = hasValidRange ? left - requestedDays : left;
+  const forecastYear = (() => {
+    if (form.startDate) {
+      const y = Number(form.startDate.slice(0, 4));
+      if (Number.isInteger(y) && y >= 2000 && y <= 2100) return y;
+    }
+    return new Date().getFullYear();
+  })();
+  const carryForwardHint =
+    form.type === 'PAID'
+      ? 'Carry-forward: up to 5 days'
+      : 'Carry-forward: not applicable for this leave type';
 
   function set<K extends keyof ApplyLeaveInput>(key: K) {
     return (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -211,14 +231,60 @@ export default function Leaves() {
                 <form onSubmit={handleSubmit}>
                   <div className="field">
                     <label className="field__label" htmlFor="leave-type">Type</label>
-                    <select id="leave-type" className="input" value={form.type} onChange={set('type')}>
+                    <select id="leave-type" className="input" value={form.type} onChange={set('type')} aria-describedby="leave-forecast-helper">
                       <option value="PAID">Paid leave</option>
                       <option value="SICK">Sick leave</option>
                       <option value="UNPAID">Unpaid leave</option>
                     </select>
                   </div>
-                  <Input label="From" type="date" value={form.startDate} onChange={set('startDate')} min={todayISO} />
-                  <Input label="To" type="date" value={form.endDate} onChange={set('endDate')} min={form.startDate || todayISO} />
+                  <Input label="From" type="date" value={form.startDate} onChange={set('startDate')} min={todayISO} aria-describedby="leave-forecast-helper" />
+                  <Input label="To" type="date" value={form.endDate} onChange={set('endDate')} min={form.startDate || todayISO} aria-describedby="leave-forecast-helper" />
+                  {/* Live forecast — updates as type/dates change; entitlement minus PENDING+APPROVED */}
+                  <div
+                    id="leave-forecast-card"
+                    className="leave-forecast animate-in"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    role="status"
+                  >
+                    {hasValidRange ? (
+                      <>
+                        <p id="leave-forecast-helper" className="leave-forecast__primary">
+                          If you take <strong>{requestedDays} day{requestedDays === 1 ? '' : 's'}</strong>, you&apos;ll have{' '}
+                          <strong>{Math.max(forecastLeft, 0)} left</strong> in {forecastYear}.
+                          <span className="leave-forecast__badge-wrap">
+                            {forecastLeft < 0 ? (
+                              <Badge tone="error">exceeds balance</Badge>
+                            ) : (
+                              <Badge tone="neutral">{forecastLeft} of {entitlementForType} left</Badge>
+                            )}
+                          </span>
+                        </p>
+                        <p className="leave-forecast__meta dash-sub">
+                          {form.type} · {left} of {entitlementForType} remaining · {requestedDays} requested ·{' '}
+                          <strong>{Math.max(forecastLeft, 0)} after</strong>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p id="leave-forecast-helper" className="leave-forecast__primary leave-forecast__primary--muted">
+                          Select dates to see forecast — <strong>{left} of {entitlementForType}</strong> {form.type} days left in {forecastYear}.
+                          <span className="leave-forecast__badge-wrap">
+                            <Badge tone="neutral">{left} left</Badge>
+                          </span>
+                        </p>
+                        <p className="leave-forecast__meta dash-sub">
+                          Entitlement {entitlementForType} · used {usedForType} (PENDING+APPROVED)
+                        </p>
+                      </>
+                    )}
+                    <p className="leave-forecast__carry">{carryForwardHint}{form.type === 'PAID' ? ' — unused PAID balance may roll over per policy.' : '.'}</p>
+                    {hasValidRange && forecastLeft < 0 && (
+                      <p className="form-error" style={{ marginTop: 'var(--space-xs)', marginBottom: 0 }}>
+                        Insufficient {form.type} balance: {left} left, {requestedDays} requested.
+                      </p>
+                    )}
+                  </div>
                   <p className="dash-sub" style={{ marginTop: -8, marginBottom: 12 }}>Past dates are not allowed for employees.</p>
                   <div className="field">
                     <label className="field__label" htmlFor="leave-remarks">Remarks</label>
