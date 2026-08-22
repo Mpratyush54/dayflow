@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import PDFDocument from 'pdfkit';
 import Payroll from '../models/payroll.model.js';
 import User from '../models/user.model.js';
+import Attendance from '../models/attendance.model.js';
+import LeaveRequest from '../models/leave.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { notifyPayslipReady } from '../utils/mailer.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
@@ -132,6 +134,25 @@ function monthLabel(month) {
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
+function localDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function monthWorkdays(month) {
+  const [y, m] = month.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const last = new Date(y, m, 0);
+  const today = new Date();
+  const cappedLast = first <= today && today <= last ? today : last;
+  if (cappedLast < first) return { first, last: cappedLast, total: 0 };
+  let total = 0;
+  for (let d = new Date(first); d <= cappedLast; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) total++;
+  }
+  return { first, last: cappedLast, total };
+}
+
 // GET /api/payroll/slip?month=YYYY-MM[&userId=] — PDF slip from the current
 // Payroll structure (self, or HR/ADMIN for anyone)
 export async function slip(req, res) {
@@ -193,6 +214,57 @@ export async function slip(req, res) {
     basic = salary.basicSalary ?? 0;
     currency = salary.currency ?? 'INR';
   }
+  // --- Dynamic LOP: attendance-linked unpaid days for the requested month
+  const { first: lopFirst, last: lopLast, total: totalWorkdays } = monthWorkdays(month);
+  let lopUnpaidDays = 0;
+  if (totalWorkdays > 0 && basic > 0) {
+    const [records, unpaidLeaves, allLeaves] = await Promise.all([
+      Attendance.find({ user: targetUser._id, date: { $gte: localDateKey(lopFirst), $lte: localDateKey(lopLast) } }).select('date status checkIn'),
+      LeaveRequest.find({ userId: targetUser._id, status: 'APPROVED', type: 'UNPAID', startDate: { $lte: lopLast }, endDate: { $gte: lopFirst } }).select('startDate endDate'),
+      LeaveRequest.find({ userId: targetUser._id, status: 'APPROVED', startDate: { $lte: lopLast }, endDate: { $gte: lopFirst } }).select('type startDate endDate'),
+    ]);
+    const byDate = new Map(records.map((r) => [r.date, r]));
+    const unpaidSet = new Set();
+    for (const lv of unpaidLeaves) {
+      for (let d = new Date(lv.startDate); d <= lv.endDate; d.setDate(d.getDate() + 1)) {
+        if (d < lopFirst || d > lopLast) continue;
+        if (d.getDay() === 0 || d.getDay() === 6) continue;
+        unpaidSet.add(localDateKey(d));
+      }
+    }
+    const anyLeaveSet = new Set();
+    for (const lv of allLeaves) {
+      for (let d = new Date(lv.startDate); d <= lv.endDate; d.setDate(d.getDate() + 1)) {
+        if (d < lopFirst || d > lopLast) continue;
+        if (d.getDay() === 0 || d.getDay() === 6) continue;
+        anyLeaveSet.add(localDateKey(d));
+      }
+    }
+    for (let d = new Date(lopFirst); d <= lopLast; d.setDate(d.getDate() + 1)) {
+      if (d.getDay() === 0 || d.getDay() === 6) continue;
+      if (d > new Date()) continue;
+      const key = localDateKey(d);
+      const rec = byDate.get(key);
+      if (rec && rec.checkIn) {
+        if (rec.status === 'HALF_DAY') lopUnpaidDays += 0.5;
+      } else if (unpaidSet.has(key)) {
+        lopUnpaidDays += 1;
+      } else if (anyLeaveSet.has(key)) {
+        // paid/sick leave — not unpaid
+      } else {
+        lopUnpaidDays += 1;
+      }
+    }
+    if (lopUnpaidDays > 0) {
+      const dailyRate = basic / totalWorkdays;
+      const lopAmount = Math.round(lopUnpaidDays * dailyRate);
+      if (lopAmount > 0) {
+        const lopLabel = `LOP (${lopUnpaidDays} day${lopUnpaidDays === 1 ? '' : 's'} unpaid)`;
+        deductions[lopLabel] = (deductions[lopLabel] || 0) + lopAmount;
+      }
+    }
+  }
+
   const totalAllowances = Object.values(allowances).reduce((a, b) => a + b, 0);
   const totalDeductions = Object.values(deductions).reduce((a, b) => a + b, 0);
   const gross = basic + totalAllowances;
