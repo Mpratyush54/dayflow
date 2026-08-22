@@ -1,5 +1,22 @@
 export type Role = 'EMPLOYEE' | 'HR' | 'ADMIN';
 
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERN';
+export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED';
+
+export interface SalaryStructure {
+  basicSalary: number;
+  currency: string;
+  allowances?: Record<string, number>;
+  deductions?: Record<string, number>;
+}
+
+export interface EmployeeDocument {
+  id: string;
+  name: string;
+  url: string;
+  uploadedAt: string;
+}
+
 export interface User {
   id: string;
   employeeId: string;
@@ -9,6 +26,18 @@ export interface User {
   phone?: string;
   address?: string;
   profilePicture?: string;
+}
+
+export interface EmployeeProfile extends User {
+  dateOfBirth?: string;
+  designation?: string;
+  department?: string;
+  employmentType?: EmploymentType;
+  dateOfJoining?: string;
+  workLocation?: string;
+  status?: EmploymentStatus;
+  salary?: SalaryStructure;
+  documents?: EmployeeDocument[];
 }
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
