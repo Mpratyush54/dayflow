@@ -60,7 +60,7 @@ export default function Leaves() {
   const usedByType = BALANCE_TOTALS.map(({ type }) => ({
     type,
     used: (leaves ?? [])
-      .filter((l) => l.type === type && l.status === 'APPROVED')
+      .filter((l) => l.type === type && l.status !== 'REJECTED')
       .reduce((sum, l) => sum + daysInclusive(l.startDate, l.endDate), 0),
   }));
 
@@ -85,6 +85,15 @@ export default function Leaves() {
     if (form.endDate < form.startDate) {
       setFormError('End date cannot be before the start date');
       return;
+    }
+    const requestedDays = daysInclusive(form.startDate, form.endDate);
+    const entitlement = BALANCE_TOTALS.find((b) => b.type === form.type)?.total;
+    if (entitlement !== undefined) {
+      const usedForType = usedByType.find((u) => u.type === form.type)?.used ?? 0;
+      if (usedForType + requestedDays > entitlement) {
+        setFormError(`Insufficient ${form.type} balance: ${entitlement - usedForType} day(s) left, ${requestedDays} requested`);
+        return;
+      }
     }
     setSubmitting(true);
     try {
