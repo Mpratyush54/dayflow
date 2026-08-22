@@ -1,6 +1,7 @@
 import Attendance from '../models/attendance.model.js';
 import User, { USER_PUBLIC_FIELDS } from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
+import { getApprovedLeaveDays } from '../services/attendance.service.js';
 
 const FULL_DAY_MIN_HOURS = 4;
 
@@ -68,31 +69,39 @@ export async function getMine(req, res) {
   const to = dateKey();
   const from = shiftDate(to, -(days - 1));
 
-  const records = await Attendance.find({
-    user: req.user._id,
-    date: { $gte: from, $lte: to },
-  }).sort({ date: 1 });
+  const [records, leaveDays] = await Promise.all([
+    Attendance.find({
+      user: req.user._id,
+      date: { $gte: from, $lte: to },
+    }).sort({ date: 1 }),
+    getApprovedLeaveDays([req.user._id], from, to),
+  ]);
+  const myLeaveDays = leaveDays.get(req.user._id.toString()) ?? new Set();
 
   const byDate = new Map(records.map((r) => [r.date, dayRecordJson(r)]));
   const dayList = [];
   for (let i = 0; i < days; i++) {
     const key = shiftDate(from, i);
-    dayList.push(
-      byDate.get(key) ?? {
+    if (byDate.has(key)) {
+      dayList.push(byDate.get(key));
+    } else {
+      dayList.push({
         date: key,
         weekday: new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' }),
         checkIn: null,
         checkOut: null,
-        status: null,
+        // Days covered by approved leave derive LEAVE at read time
+        status: myLeaveDays.has(key) ? 'LEAVE' : null,
         workedHours: 0,
-      },
-    );
+      });
+    }
   }
 
   const isWorkday = (key) => ![0, 6].includes(new Date(`${key}T00:00:00`).getDay());
   const workdays = dayList.filter((d) => d.date <= to && isWorkday(d.date)).length;
   const present = dayList.filter((d) => d.status === 'PRESENT').length;
   const halfDay = dayList.filter((d) => d.status === 'HALF_DAY').length;
+  const leave = dayList.filter((d) => d.status === 'LEAVE' && isWorkday(d.date)).length;
   const hours =
     Math.round(dayList.reduce((sum, d) => sum + (d.workedHours ?? 0), 0) * 10) / 10;
   const rate = workdays === 0 ? null : Math.round(((present + halfDay * 0.5) / workdays) * 100);
@@ -104,7 +113,8 @@ export async function getMine(req, res) {
       workdays,
       present,
       halfDay,
-      absent: Math.max(workdays - present - halfDay, 0),
+      leave,
+      absent: Math.max(workdays - present - halfDay - leave, 0),
       hours,
       rate,
     },
@@ -117,22 +127,26 @@ export async function getTeam(req, res) {
     ? req.query.date
     : dateKey();
 
-  const [users, records] = await Promise.all([
-    User.find({ status: { $ne: 'RESIGNED' } })
-      .select(`${USER_PUBLIC_FIELDS} status`)
-      .sort({ employeeId: 1 }),
+  const users = await User.find({ status: { $ne: 'RESIGNED' } })
+    .select(`${USER_PUBLIC_FIELDS} status`)
+    .sort({ employeeId: 1 });
+
+  const [records, leaveDays] = await Promise.all([
     Attendance.find({ date }).populate('user', 'employeeId name email role'),
+    // Approved-leave days derive LEAVE at read time
+    getApprovedLeaveDays(users.map((u) => u._id), date, date),
   ]);
 
   const byUser = new Map(records.map((r) => [r.user?._id?.toString() ?? r.user?.toString(), r]));
 
   const rows = users.map((user) => {
     const record = byUser.get(user._id.toString());
+    const onLeave = leaveDays.get(user._id.toString())?.has(date);
     return {
       user: user.toJSON(),
       checkIn: record?.checkIn ?? null,
       checkOut: record?.checkOut ?? null,
-      status: record ? record.status : 'ABSENT',
+      status: record ? record.status : onLeave ? 'LEAVE' : 'ABSENT',
       workedHours: record ? record.toJSON().workedHours : 0,
     };
   });

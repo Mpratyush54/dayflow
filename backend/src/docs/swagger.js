@@ -253,10 +253,11 @@ export const swaggerSpec = {
     },
     '/api/attendance': {
       get: {
-        summary: 'Own attendance (daily/weekly view + summary)',
+        summary: 'Own attendance (daily/weekly view + summary); approved-leave days derive LEAVE',
         description:
-          'Returns one entry per day for the requested window (gaps included as absent) ' +
-          'plus a summary: workdays, present, half-days, absent, total hours, attendance rate.',
+          'Returns one entry per day for the requested window (gaps included as absent, ' +
+          'days inside approved leave as LEAVE) plus a summary: workdays, present, half-days, ' +
+          'leave, absent, total hours, attendance rate.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
