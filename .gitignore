@@ -21,6 +21,10 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Uploaded employee documents
+backend/uploads/
+uploads/
+
 # Editor files
 .vscode/
 .idea/

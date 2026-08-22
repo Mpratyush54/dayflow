@@ -4,7 +4,7 @@ import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
-import { getEmployee, updateEmployee } from '../../api/employees';
+import { getEmployee, updateEmployee, uploadDocument, deleteDocument } from '../../api/employees';
 import type { EmployeePatch } from '../../api/employees';
 import type { EmployeeProfile } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
@@ -93,6 +93,10 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [form, setForm] = useState<FormState | null>(null);
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docName, setDocName] = useState('');
+  const [docUploading, setDocUploading] = useState(false);
+  const [docError, setDocError] = useState('');
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -149,6 +153,51 @@ export default function Profile() {
     reader.onload = () =>
       setForm((prev) => (prev ? { ...prev, profilePicture: String(reader.result) } : prev));
     reader.readAsDataURL(file);
+  }
+
+  async function handleDocUpload(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profile || !docFile) {
+      setDocError('Select a file (PDF/JPG/PNG, ≤5MB)');
+      return;
+    }
+    if (docFile.size > 5 * 1024 * 1024) {
+      setDocError('File must be ≤5MB');
+      return;
+    }
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowed.includes(docFile.type)) {
+      setDocError('Only PDF, JPG, PNG allowed');
+      return;
+    }
+    setDocUploading(true);
+    setDocError('');
+    try {
+      await uploadDocument(profile.id, docFile, docName.trim() || docFile.name);
+      const updated = await getEmployee(profile.id);
+      setProfile(updated);
+      setDocFile(null);
+      setDocName('');
+      // reset file input value
+      const input = document.getElementById('doc-file-input') as HTMLInputElement | null;
+      if (input) input.value = '';
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setDocUploading(false);
+    }
+  }
+
+  async function handleDocDelete(docId: string) {
+    if (!profile) return;
+    if (!confirm('Delete this document?')) return;
+    try {
+      await deleteDocument(profile.id, docId);
+      const updated = await getEmployee(profile.id);
+      setProfile(updated);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed');
+    }
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -381,17 +430,55 @@ export default function Profile() {
             {profile.documents && profile.documents.length > 0 ? (
               <ul className="document-list">
                 {profile.documents.map((doc) => (
-                  <li key={doc.id}>
-                    <a href={doc.url} target="_blank" rel="noreferrer">
-                      {doc.name}
-                    </a>
-                    <span className="document-list__date">{formatDate(doc.uploadedAt)}</span>
+                  <li key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                    <span>
+                      <a href={doc.url} target="_blank" rel="noreferrer">
+                        {doc.name}
+                      </a>
+                      <span className="document-list__date" style={{ marginLeft: 8 }}>{formatDate(doc.uploadedAt)}</span>
+                    </span>
+                    <span style={{ display: 'inline-flex', gap: 8 }}>
+                      <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
+                        View
+                      </a>
+                      <a href={doc.url} download={doc.name} className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
+                        Download
+                      </a>
+                      <Button variant="text" onClick={() => void handleDocDelete(doc.id)} style={{ fontSize: 12 }}>
+                        Delete
+                      </Button>
+                    </span>
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="profile-note">No documents on file.</p>
             )}
+            <form onSubmit={handleDocUpload} style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--color-hairline-soft)', paddingTop: 12 }}>
+              <span className="field__label" style={{ fontWeight: 600, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--color-muted)' }}>Upload ID proof / PDF</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  className="input"
+                  placeholder="Document name (e.g. Aadhaar)"
+                  value={docName}
+                  onChange={(e) => setDocName(e.target.value)}
+                  style={{ flex: '1 1 160px' }}
+                />
+                <input
+                  id="doc-file-input"
+                  type="file"
+                  accept=".pdf,image/jpeg,image/png,image/jpg"
+                  onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
+                  className="input"
+                  style={{ flex: '1 1 180px' }}
+                />
+                <Button type="submit" disabled={docUploading || !docFile}>
+                  {docUploading ? 'Uploading…' : 'Upload'}
+                </Button>
+              </div>
+              <span className="dash-sub">PDF, JPG, PNG ≤5MB — preview and download after upload. URLs served via /uploads and proxied in dev.</span>
+              {docError && <p className="form-error">{docError}</p>}
+            </form>
           </Card>
         </div>
       )}
