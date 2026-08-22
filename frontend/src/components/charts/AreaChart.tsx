@@ -20,20 +20,22 @@ export default function AreaChart({ points, labels, height = 180, suffix = '', i
   const line = toPath(points, w, h, max);
   const area = `${line} L ${w} ${h} L 0 ${h} Z`;
   const maxVal = Math.max(...points);
-  const lastX = w;
-  const lastY = h - (points[points.length - 1] / max) * h;
+  const maxIndex = points.indexOf(maxVal);
+  const step = w / (points.length - 1);
+  const peakX = maxIndex * step;
+  const peakY = h - (maxVal / max) * h;
 
   return (
     <div className="area-chart" style={{ height }}>
       <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label="Trend chart">
         <defs>
           <linearGradient id={`fill-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-gradient-lavender)" stopOpacity="0.45" />
-            <stop offset="100%" stopColor="var(--color-gradient-lavender)" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="var(--color-gradient-sky)" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="var(--color-gradient-sky)" stopOpacity="0.04" />
           </linearGradient>
           <linearGradient id={`stroke-${id}`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="var(--color-gradient-mint)" />
-            <stop offset="100%" stopColor="var(--color-gradient-lavender)" />
+            <stop offset="100%" stopColor="var(--color-gradient-sky)" />
           </linearGradient>
         </defs>
         <path className="area-chart__area" d={area} fill={`url(#fill-${id})`} />
@@ -44,9 +46,10 @@ export default function AreaChart({ points, labels, height = 180, suffix = '', i
           stroke={`url(#stroke-${id})`}
           strokeWidth="3"
           strokeLinecap="round"
+          strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
         />
-        <circle className="area-chart__dot" cx={lastX} cy={lastY} r="5" fill="var(--color-gradient-lavender)" />
+        <circle className="area-chart__dot" cx={peakX} cy={peakY} r="5" fill="var(--color-gradient-sky)" />
       </svg>
       <div className="area-chart__labels">
         {labels?.map((l) => <span key={l}>{l}</span>)}
