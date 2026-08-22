@@ -20,6 +20,8 @@ export default function AreaChart({ points, labels, height = 180, suffix = '', i
   const line = toPath(points, w, h, max);
   const area = `${line} L ${w} ${h} L 0 ${h} Z`;
   const maxVal = Math.max(...points);
+  const lastX = w;
+  const lastY = h - (points[points.length - 1] / max) * h;
 
   return (
     <div className="area-chart" style={{ height }}>
@@ -44,6 +46,7 @@ export default function AreaChart({ points, labels, height = 180, suffix = '', i
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
         />
+        <circle className="area-chart__dot" cx={lastX} cy={lastY} r="5" fill="var(--color-gradient-lavender)" />
       </svg>
       <div className="area-chart__labels">
         {labels?.map((l) => <span key={l}>{l}</span>)}

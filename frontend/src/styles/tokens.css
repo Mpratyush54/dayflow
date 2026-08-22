@@ -85,4 +85,27 @@
   --nav-height: 64px;
   --button-height: 40px;
   --input-height: 44px;
+
+  --heatmap-l1: #e9f5ef;
+}
+
+/* Dark theme — deep ink canvas, orbs glow */
+[data-theme='dark'] {
+  --color-canvas: #0c0a09;
+  --color-canvas-soft: #141210;
+  --color-canvas-deep: #000000;
+  --color-surface-card: #1c1917;
+  --color-surface-strong: #292524;
+  --color-ink: #f5f5f5;
+  --color-body: #d6d3d1;
+  --color-body-strong: #f5f5f5;
+  --color-muted: #a8a29e;
+  --color-muted-soft: #78716c;
+  --color-hairline: #2e2b29;
+  --color-hairline-soft: #262320;
+  --color-hairline-strong: #3c3835;
+  --color-primary: #f5f5f5;
+  --color-primary-active: #ffffff;
+  --color-on-primary: #0c0a09;
+  --heatmap-l1: #1f2b26;
 }

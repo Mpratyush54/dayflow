@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useTheme } from '../../context/theme-context';
+import CommandPalette from '../common/CommandPalette';
+import type { Command } from '../common/CommandPalette';
 
 export interface NavItem {
   to: string;
@@ -11,16 +14,24 @@ export interface NavItem {
 interface SidebarProps {
   items: NavItem[];
   user: { name: string; role: string; initials: string };
+  commands?: Command[];
   children: ReactNode;
 }
 
-export default function Sidebar({ items, user, children }: SidebarProps) {
+export default function Sidebar({ items, user, commands = [], children }: SidebarProps) {
+  const { theme, toggle } = useTheme();
+
   return (
     <div className="shell">
+      <CommandPalette commands={commands} />
       <aside className="sidebar">
         <a className="sidebar__brand" href="#">
           <span className="sidebar__logo" aria-hidden /> DayFlow
         </a>
+        <button className="sidebar__cmdk" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}>
+          <span aria-hidden>⌕</span> Quick jump
+          <kbd>Ctrl K</kbd>
+        </button>
         <nav className="sidebar__nav">
           {items.map((item) => (
             <NavLink
@@ -34,6 +45,10 @@ export default function Sidebar({ items, user, children }: SidebarProps) {
             </NavLink>
           ))}
         </nav>
+        <button className="sidebar__theme" onClick={toggle} aria-label="Toggle dark mode">
+          <span aria-hidden>{theme === 'dark' ? '☀' : '☾'}</span>
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
         <div className="sidebar__user">
           <span className="avatar avatar--mint">{user.initials}</span>
           <span>
