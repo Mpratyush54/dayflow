@@ -73,11 +73,41 @@
   border-radius: var(--radius-md);
   height: var(--input-height);
   padding: 12px 16px;
+  color-scheme: light;
+}
+
+[data-theme='dark'] .input {
+  color-scheme: dark;
 }
 
 .input:focus {
   outline: none;
   border-color: var(--color-ink);
+}
+
+/* Date inputs — ensure calendar icon has contrast in both themes, uses tokens */
+.input[type='date'] {
+  color-scheme: light;
+}
+
+[data-theme='dark'] .input[type='date'] {
+  color-scheme: dark;
+}
+
+.input[type='date']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+  filter: none;
+}
+
+[data-theme='dark'] .input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  opacity: 1;
+}
+
+/* Fallback for Firefox date inputs */
+.input[type='date']::-moz-calendar-picker-indicator {
+  opacity: 0.75;
 }
 
 /* Cards */

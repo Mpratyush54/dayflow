@@ -226,7 +226,7 @@ export default function Profile() {
       <Card className="profile-hero">
         <div className="profile-hero__avatar" aria-hidden>
           {profile.profilePicture ? (
-            <img src={profile.profilePicture} alt="" />
+            <img src={profile.profilePicture} alt="" loading="lazy" />
           ) : (
             initials(profile.name, profile.email)
           )}
@@ -256,7 +256,7 @@ export default function Profile() {
             <div className="profile-picture-row">
               <div className="profile-hero__avatar profile-hero__avatar--sm" aria-hidden>
                 {form.profilePicture ? (
-                  <img src={form.profilePicture} alt="" />
+                  <img src={form.profilePicture} alt="" loading="lazy" />
                 ) : (
                   initials(form.name || profile.name, profile.email)
                 )}
