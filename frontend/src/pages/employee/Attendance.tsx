@@ -1,20 +1,41 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
-import Donut from '../../components/charts/Donut';
-import AreaChart from '../../components/charts/AreaChart';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
-import { checkIn, checkOut, getMyAttendance } from '../../api/attendance';
+import { checkIn, checkOut, getMyAttendanceByMonth } from '../../api/attendance';
 import type { AttendanceWindow } from '../../types';
 import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
 
-function todayKey() {
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function todayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthShortLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString([], { month: 'short' });
+}
+
+function monthLongLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
 }
 
 function Skeletons() {
@@ -31,30 +52,31 @@ function Skeletons() {
   );
 }
 
-function fmtTime(value: string | null) {
+function fmtTime(value: string | null): string {
   if (!value) return '—';
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function fmtDate(key: string) {
-  return new Date(`${key}T00:00:00`).toLocaleDateString([], { day: 'numeric', month: 'short' });
+function fmtDate(key: string): string {
+  return new Date(`${key}T00:00:00`).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function Attendance() {
   const { toasts, push } = useToasts();
   const [searchParams, setSearchParams] = useSearchParams();
-  const dateParam = searchParams.get('date');
-  const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayKey();
+  const rawMonth = searchParams.get('month');
+  const curMonth = currentMonthKey();
+  const selectedMonth = rawMonth && MONTH_RE.test(rawMonth) && rawMonth <= curMonth ? rawMonth : curMonth;
   const [data, setData] = useState<AttendanceWindow | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  const load = useCallback(async (forDate: string) => {
+  const load = useCallback(async (month: string) => {
     setLoading(true);
     try {
-      setData(await getMyAttendance(7, forDate));
+      setData(await getMyAttendanceByMonth(month));
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load attendance');
@@ -64,21 +86,20 @@ export default function Attendance() {
   }, []);
 
   useEffect(() => {
-    void load(selectedDate);
-  }, [load, selectedDate]);
+    void load(selectedMonth);
+  }, [load, selectedMonth]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const today = data?.days[data.days.length - 1] ?? null;
+  const todayStr = todayKey();
+  const today = data?.days.find((d) => d.date === todayStr) ?? data?.days[data.days.length - 1] ?? null;
   const checkedIn = !!today?.checkIn;
   const checkedOut = !!today?.checkOut;
-  const liveHours =
-    checkedIn && !checkedOut && today?.checkIn
-      ? liveHoursFromCheckIn(today.checkIn, now)
-      : 0;
+  const isCurrentMonth = selectedMonth === curMonth;
+  const liveHours = checkedIn && !checkedOut && today?.checkIn && isCurrentMonth ? liveHoursFromCheckIn(today.checkIn, now) : 0;
 
   async function handleAction() {
     setActing(true);
@@ -89,7 +110,7 @@ export default function Attendance() {
           ? `Checked out · ${record.workedHours}h today`
           : `Checked in at ${fmtTime(record.checkIn)}`,
       );
-      await load(selectedDate);
+      await load(selectedMonth);
     } catch (err) {
       push(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -97,8 +118,17 @@ export default function Attendance() {
     }
   }
 
-  const chartPoints = data ? data.days.map((d) => (d.checkOut ? d.workedHours : d.checkIn ? Math.round(liveHours * 10) / 10 : 0)) : [];
-  const chartLabels = data ? data.days.map((d) => d.weekday) : [];
+  const prevMonth = shiftMonth(selectedMonth, -1);
+  const nextMonth = shiftMonth(selectedMonth, 1);
+  const canNext = nextMonth <= curMonth;
+
+  const monthOptions = useMemo(() => {
+    const opts: string[] = [];
+    for (let i = -11; i <= 0; i++) opts.push(shiftMonth(curMonth, i));
+    if (!opts.includes(selectedMonth)) opts.push(selectedMonth);
+    opts.sort();
+    return opts;
+  }, [curMonth, selectedMonth]);
 
   return (
     <Sidebar
@@ -127,7 +157,7 @@ export default function Attendance() {
         ) : error ? (
           <Card heading="Attendance">
             <p className="form-error">{error}</p>
-            <Button variant="outline" onClick={() => void load(selectedDate)}>Retry</Button>
+            <Button variant="outline" onClick={() => void load(selectedMonth)}>Retry</Button>
           </Card>
         ) : data && (
           <>
@@ -135,7 +165,10 @@ export default function Attendance() {
               <div>
                 <p className="dash-sub">{now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                 <h1>My <span className="text-gradient">attendance</span></h1>
-                {today && (
+                <p className="dash-sub" style={{ marginTop: 8, color: 'var(--color-muted)' }}>
+                  {monthLongLabel(selectedMonth)} · {data.range.from} → {data.range.to}
+                </p>
+                {today && isCurrentMonth && (
                   <p className="ticker" style={{ marginTop: 12 }}>
                     <span className="ticker__dot" aria-hidden />
                     {checkedOut
@@ -146,24 +179,61 @@ export default function Attendance() {
                   </p>
                 )}
               </div>
-              <div className="hero-actions">
-                <input
-                  type="date"
-                  className="input"
-                  style={{ width: 'auto', height: 'var(--button-height)' }}
-                  value={selectedDate}
-                  max={todayKey()}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-                      setSearchParams({ date: v });
-                    } else {
-                      setSearchParams({});
-                    }
+              <div className="hero-actions" style={{ flexWrap: 'wrap' }}>
+                <div
+                  className="month-nav"
+                  role="navigation"
+                  aria-label="Month navigator"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-xs)',
+                    padding: 'var(--space-xxs)',
+                    border: '1px solid var(--color-hairline)',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'var(--color-surface-card)',
                   }}
-                  aria-label="Pick a date"
-                />
-                <Button variant="outline" onClick={() => setSearchParams({})}>Today</Button>
+                >
+                  <Button
+                    variant="outline"
+                    aria-label="Previous month"
+                    onClick={() => setSearchParams({ month: prevMonth })}
+                    style={{ border: 'none', minWidth: 72 }}
+                  >
+                    &lt; Prev
+                  </Button>
+                  <label htmlFor="month-select" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>Select month</label>
+                  <select
+                    id="month-select"
+                    aria-label="Select month"
+                    value={selectedMonth}
+                    onChange={(e) => setSearchParams({ month: e.target.value })}
+                    style={{
+                      border: '1px solid var(--color-hairline)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '6px 12px',
+                      font: 'var(--type-button)',
+                      background: 'var(--color-surface-card)',
+                      color: 'var(--color-ink)',
+                      minWidth: 110,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {monthOptions.map((m) => (
+                      <option key={m} value={m}>{monthShortLabel(m)} {m.slice(0, 4)}</option>
+                    ))}
+                  </select>
+                  <span aria-hidden style={{ color: 'var(--color-muted)' }}>▼</span>
+                  <Button
+                    variant="outline"
+                    aria-label="Next month"
+                    disabled={!canNext}
+                    onClick={() => { if (canNext) setSearchParams({ month: nextMonth }); }}
+                    style={{ border: 'none', minWidth: 72, opacity: canNext ? 1 : 0.45 }}
+                  >
+                    Next &gt;
+                  </Button>
+                </div>
                 <Badge tone={checkedOut ? 'success' : checkedIn ? 'success' : 'neutral'}>
                   {checkedOut ? 'Day complete' : checkedIn ? 'Checked in' : 'Not checked in'}
                 </Badge>
@@ -179,63 +249,48 @@ export default function Attendance() {
               </div>
             </div>
 
-            <div className="bento">
-              <Card className="bento__hero card--grad" heading="Hours this week">
-                <div className="art" style={{ marginBottom: 16 }} aria-hidden />
-                {chartPoints.length === 0 || chartPoints.every((p) => p === 0) ? (
-                  <p className="dash-sub" style={{ minHeight: 200, display: 'grid', placeItems: 'center', margin: 0 }}>
-                    No hours logged this week — check in to start tracking
-                  </p>
-                ) : (
-                  <AreaChart id="attendance-hours" points={chartPoints} labels={chartLabels} suffix="h" height={200} />
-                )}
-                <p className="dash-sub">
-                  {data.summary.hours}h logged · {data.summary.workdays} workdays
-                </p>
-              </Card>
-
-              <Card className="bento__mid card--tint-mint donut-card">
-                <Donut
-                  value={data.summary.rate ?? 0}
-                  label="Attendance"
-                  sublabel={data.summary.rate === null ? 'no workdays yet' : `${data.summary.rate}% present`}
-                />
-              </Card>
-
-              <Card className="bento__mid card--dark">
+            <div className="bento" style={{ marginBottom: 'var(--space-lg)' }}>
+              <Card className="bento__mid stat-card card--tint-mint">
                 <span className="stat-xl">{data.summary.present}</span>
-                <p className="dash-sub" style={{ color: 'var(--color-on-dark-soft)' }}>Full days</p>
-                <div className="summary-row" style={{ marginTop: 16 }}>
-                  <span className="summary-row__label">Half days</span>
-                  <span className="summary-row__value">{data.summary.halfDay}</span>
-                </div>
-                <div className="summary-row">
-                  <span className="summary-row__label">On leave</span>
-                  <span className="summary-row__value">{data.summary.leave}</span>
-                </div>
-                <div className="summary-row">
-                  <span className="summary-row__label">Absent</span>
-                  <span className="summary-row__value">{data.summary.absent}</span>
-                </div>
+                <span className="stat-label">Count present</span>
+                <span className="dash-sub" style={{ fontSize: 12, color: 'var(--color-muted)' }}>{monthShortLabel(selectedMonth)} present days</span>
               </Card>
+              <Card className="bento__mid stat-card card--tint-peach">
+                <span className="stat-xl">{data.summary.leave}</span>
+                <span className="stat-label">Leaves count</span>
+                <span className="dash-sub" style={{ fontSize: 12, color: 'var(--color-muted)' }}>Approved leaves in month</span>
+              </Card>
+              <Card className="bento__mid stat-card card--tint-lavender">
+                <span className="stat-xl">{data.summary.workdays}</span>
+                <span className="stat-label">Total working days</span>
+                <span className="dash-sub" style={{ fontSize: 12, color: 'var(--color-muted)' }}>{monthLongLabel(selectedMonth)}</span>
+              </Card>
+              <Card className="bento__mid stat-card card--tint-sky">
+                <span className="stat-xl" style={{ fontSize: 18, lineHeight: 1.2 }}>{monthLongLabel(selectedMonth)}</span>
+                <span className="stat-label">Selected date</span>
+                <span className="dash-sub" style={{ fontSize: 12, color: 'var(--color-muted)' }}>{data.range.from} → {data.range.to}</span>
+              </Card>
+            </div>
 
-              <Card className="bento__wide" heading="Last 7 days">
+            <div className="bento">
+              <Card className="bento__wide" heading={`Attendance · ${monthLongLabel(selectedMonth)} (${data.days.length} days)`}>
+                <p className="dash-sub" style={{ marginBottom: 12 }}>
+                  {data.summary.hours}h logged · {data.summary.workdays} workdays · {data.summary.present} present · {data.summary.leave} leaves
+                </p>
                 <div className="table-card">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Day</th>
-                        <th>Checked in</th>
-                        <th>Checked out</th>
-                        <th>Hours</th>
-                        <th>Work hours</th>
+                        <th>Date</th>
+                        <th>Check In</th>
+                        <th>Check Out</th>
+                        <th>Work Hours</th>
                         <th>Extra hours</th>
-                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.days.map((d) => {
-                        const isToday = d.date === today?.date;
+                        const isToday = d.date === todayStr && isCurrentMonth;
                         const isWeekend = d.weekday === 'Sat' || d.weekday === 'Sun';
                         const total = totalLoggedHours(
                           d.workedHours,
@@ -244,21 +299,15 @@ export default function Attendance() {
                           isToday,
                           liveHours,
                         );
+                        const work = total !== null ? workHours(total) : null;
+                        const extra = total !== null ? extraHours(total) : null;
                         return (
                           <tr key={d.date} className="animate-in">
-                            <td>{fmtDate(d.date)} <span style={{ color: 'var(--color-muted)' }}>· {d.weekday}</span></td>
+                            <td>{fmtDate(d.date)} <span style={{ color: 'var(--color-muted)' }}>· {d.weekday}</span>{isWeekend && <Badge tone="neutral" style={{ marginLeft: 8 }}>Weekend</Badge>}{d.status === 'LEAVE' && <Badge tone="neutral" style={{ marginLeft: 8 }}>Leave</Badge>}{d.status === 'PRESENT' && <Badge tone="success" style={{ marginLeft: 8 }}>Present</Badge>}{d.status === 'HALF_DAY' && <Badge tone="neutral" style={{ marginLeft: 8 }}>Half day</Badge>}</td>
                             <td className="table-mono">{fmtTime(d.checkIn)}</td>
                             <td className="table-mono">{fmtTime(d.checkOut)}</td>
-                            <td className="table-mono">{fmtHours(total)}</td>
-                            <td className="table-mono">{total !== null ? fmtHours(workHours(total)) : '—'}</td>
-                            <td className="table-mono">{total !== null ? fmtHours(extraHours(total)) : '—'}</td>
-                            <td>
-                              {d.status === 'PRESENT' && <Badge tone="success">Present</Badge>}
-                              {d.status === 'HALF_DAY' && <Badge tone="neutral">Half day</Badge>}
-                              {d.status === 'LEAVE' && <Badge tone="neutral">On leave</Badge>}
-                              {!d.status && isWeekend && <Badge tone="neutral">Weekend</Badge>}
-                              {!d.status && !isWeekend && <Badge tone="error">Absent</Badge>}
-                            </td>
+                            <td className="table-mono">{work !== null ? fmtHours(work) : '—'}</td>
+                            <td className="table-mono">{extra !== null ? fmtHours(extra) : '—'}</td>
                           </tr>
                         );
                       })}
