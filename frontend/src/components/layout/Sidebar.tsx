@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../../context/theme-context';
 import { useAuth } from '../../hooks/useAuth';
@@ -35,6 +35,7 @@ function initialsOf(name: string) {
 export default function Sidebar({ items, user, commands = [], children }: SidebarProps) {
   const { theme, toggle } = useTheme();
   const { user: authUser, signOut } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const display = authUser
     ? {
@@ -47,7 +48,24 @@ export default function Sidebar({ items, user, commands = [], children }: Sideba
   return (
     <div className="shell">
       <CommandPalette commands={commands} />
-      <aside className="sidebar">
+      <button
+        type="button"
+        className="sidebar__mobile-toggle"
+        aria-label="Open navigation"
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen((v) => !v)}
+      >
+        <span aria-hidden>{mobileOpen ? '✕' : '☰'}</span>
+      </button>
+      {mobileOpen && (
+        <button
+          type="button"
+          className="sidebar__overlay"
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      <aside className={`sidebar ${mobileOpen ? 'is-open' : ''}`}>
         <a className="sidebar__brand" href="#">
           <span className="sidebar__logo" aria-hidden /> DayFlow
         </a>
@@ -61,6 +79,7 @@ export default function Sidebar({ items, user, commands = [], children }: Sideba
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={() => setMobileOpen(false)}
               className={({ isActive }) => `sidebar__link ${isActive ? 'is-active' : ''}`}
             >
               <span className="sidebar__icon" aria-hidden>{item.icon}</span>

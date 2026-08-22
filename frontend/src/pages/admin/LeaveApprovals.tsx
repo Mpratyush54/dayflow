@@ -146,7 +146,7 @@ export default function LeaveApprovals() {
               {visible.length > 0 ? (
                 <table className="table">
                   <thead>
-                    <tr><th>Employee</th><th>Type</th><th>Dates</th><th>Days</th><th>Status</th></tr>
+                    <tr><th>Employee</th><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th>Actions</th></tr>
                   </thead>
                   <tbody>
                     {visible.map((l) => {
@@ -154,11 +154,13 @@ export default function LeaveApprovals() {
                       const name = who.name || who.email || who.id;
                       const initials = name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
                       const isOpen = expanded === l.id;
+                      const isPending = l.status === 'PENDING';
+                      const busy = busyId === l.id;
                       return (
                         <Fragment key={l.id}>
                           <tr
-                            className={l.status === 'PENDING' ? 'expandable-row' : ''}
-                            onClick={l.status === 'PENDING' ? () => setExpanded(isOpen ? null : l.id) : undefined}
+                            className={isPending ? 'expandable-row' : ''}
+                            onClick={isPending ? () => setExpanded(isOpen ? null : l.id) : undefined}
                           >
                             <td>
                               <span className="cell-name">
@@ -180,10 +182,31 @@ export default function LeaveApprovals() {
                                 </span>
                               )}
                             </td>
+                            <td>
+                              {isPending ? (
+                                <span className="leave-actions" onClick={(e) => e.stopPropagation()}>
+                                  <Button
+                                    variant="outline"
+                                    disabled={busy}
+                                    onClick={() => void decide(l.id, 'REJECTED', name)}
+                                  >
+                                    Reject
+                                  </Button>
+                                  <Button
+                                    disabled={busy}
+                                    onClick={() => void decide(l.id, 'APPROVED', name)}
+                                  >
+                                    Approve
+                                  </Button>
+                                </span>
+                              ) : (
+                                <span className="dash-sub">—</span>
+                              )}
+                            </td>
                           </tr>
                           {isOpen && l.status === 'PENDING' && (
                             <tr className="row-detail">
-                              <td colSpan={5}>
+                              <td colSpan={6}>
                                 <div className="row-detail__inner">
                                   {l.remarks && (
                                     <div>

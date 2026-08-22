@@ -861,3 +861,51 @@
 .cta-band {
   animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
 }
+
+/* --- Responsive: mobile / tablet (issue #33) --- */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 var(--space-base);
+  }
+  .dash-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hero-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    align-self: stretch;
+  }
+  .hero-actions .btn,
+  .hero-actions .input {
+    flex: 1 1 120px;
+  }
+  .stat-row,
+  .quick-cards,
+  .viz-grid,
+  .viz-grid--wide,
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+  .bento {
+    grid-template-columns: 1fr;
+  }
+  .bento__wide, .bento__mid, .bento__hero, .bento__tall {
+    grid-column: span 1;
+  }
+  .cta-band {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-lg);
+  }
+  .table {
+    min-width: 560px;
+  }
+  .bar-chart {
+    height: 120px;
+  }
+  .week-strip {
+    grid-template-columns: repeat(5, minmax(0,1fr));
+    overflow-x: auto;
+  }
+}

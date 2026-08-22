@@ -11,6 +11,11 @@ const SALT_ROUNDS = 12;
 // Fields an EMPLOYEE may change on their own profile (SRS 3.3.2)
 const SELF_EDITABLE_FIELDS = ['phone', 'address', 'profilePicture'];
 
+const PHONE_RE = /^\+?[0-9]{10,15}$/;
+function normalizePhone(value) {
+  return String(value).replace(/[\s\-()]/g, '');
+}
+
 function canViewProfile(requester, targetId) {
   return (
     requester.id === targetId ||
@@ -136,6 +141,20 @@ export async function updateEmployee(req, res, next) {
     const updates = {};
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
+    // Phone validation — reject before DB write (client also validates)
+    if (updates.phone !== undefined) {
+      const raw = String(updates.phone).trim();
+      if (raw !== '') {
+        const normalized = normalizePhone(raw);
+        if (!PHONE_RE.test(normalized)) {
+          return res.status(400).json({ message: 'Invalid phone — use 10-15 digits, optional leading +', code: 'VALIDATION_ERROR' });
+        }
+        updates.phone = normalized;
+      } else {
+        updates.phone = '';
+      }
     }
 
     if (Object.keys(updates).length === 0) {
