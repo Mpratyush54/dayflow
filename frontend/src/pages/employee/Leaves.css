@@ -188,6 +188,55 @@
   font-weight: 500;
 }
 
+/* Live forecast widget — tokens only, animate-in, accessible live region */
+.leave-forecast {
+  background: var(--color-canvas-soft);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-base);
+  margin: var(--space-xs) 0 var(--space-base);
+}
+
+.leave-forecast__primary {
+  font: var(--type-body-sm);
+  color: var(--color-body-strong);
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+.leave-forecast__primary--muted {
+  color: var(--color-muted);
+}
+
+.leave-forecast__primary strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.leave-forecast__badge-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.leave-forecast__meta {
+  margin: var(--space-xs) 0 0;
+  font: var(--type-caption);
+  color: var(--color-muted);
+}
+
+.leave-forecast__meta strong {
+  color: var(--color-body-strong);
+}
+
+.leave-forecast__carry {
+  margin: var(--space-xs) 0 0;
+  font: var(--type-caption);
+  color: var(--color-muted-soft);
+}
+
 .allocation-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
