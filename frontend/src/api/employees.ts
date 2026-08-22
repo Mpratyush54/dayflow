@@ -39,6 +39,20 @@ export function createEmployee(input: { firstName: string; lastName: string; ema
   return api.post<CreatedEmployee>('/employees', input);
 }
 
-export function listEmployees() {
-  return api.get<User[]>('/employees');
+export interface Paginated<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
+export function listEmployees(): Promise<User[]>;
+export function listEmployees(page: number, limit?: number): Promise<Paginated<User>>;
+export function listEmployees(page?: number, limit?: number): Promise<User[] | Paginated<User>> {
+  const qs = new URLSearchParams();
+  if (page) qs.set('page', String(page));
+  if (limit) qs.set('limit', String(limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return api.get<User[] | Paginated<User>>(`/employees${suffix}`);
 }

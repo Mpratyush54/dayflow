@@ -12,8 +12,22 @@ export function getMyPayroll() {
   return api.get<Payroll>('/payroll');
 }
 
-export function getAllPayroll() {
-  return api.get<Payroll[]>('/payroll/all');
+export interface Paginated<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
+export function getAllPayroll(): Promise<Payroll[]>;
+export function getAllPayroll(page: number, limit?: number): Promise<Paginated<Payroll>>;
+export function getAllPayroll(page?: number, limit?: number): Promise<Payroll[] | Paginated<Payroll>> {
+  const qs = new URLSearchParams();
+  if (page) qs.set('page', String(page));
+  if (limit) qs.set('limit', String(limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return api.get<Payroll[] | Paginated<Payroll>>(`/payroll/all${suffix}`);
 }
 
 export function updatePayroll(userId: string, input: PayrollStructureInput) {

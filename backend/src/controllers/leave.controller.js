@@ -3,6 +3,7 @@ import LeaveRequest from '../models/leave.model.js';
 import User from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
 import { notifyLeaveDecision, notifyNewLeaveRequest } from '../utils/mailer.js';
+import { parsePagination, paginatedResponse } from '../utils/pagination.js';
 
 const LEAVE_TYPES = ['PAID', 'SICK', 'UNPAID'];
 const LEAVE_ENTITLEMENTS = { PAID: 18, SICK: 10, UNPAID: 5 };
@@ -100,13 +101,23 @@ export async function applyLeave(req, res) {
   res.status(201).json(leave);
 }
 
-// GET /api/leaves — own leave requests
+// GET /api/leaves — own leave requests (?page=&limit=)
 export async function getMyLeaves(req, res) {
-  const leaves = await LeaveRequest.find({ userId: req.user.id }).sort({ createdAt: -1 });
-  res.json(leaves);
+  const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+  if (!hasPagination) {
+    const leaves = await LeaveRequest.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    return res.json(leaves);
+  }
+  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 10 });
+  const filter = { userId: req.user.id };
+  const [total, leaves] = await Promise.all([
+    LeaveRequest.countDocuments(filter),
+    LeaveRequest.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+  ]);
+  res.json(paginatedResponse(leaves, total, page, limit));
 }
 
-// GET /api/leaves/all?status= — all leave requests (HR/ADMIN)
+// GET /api/leaves/all?status=&page=&limit= — all leave requests (HR/ADMIN)
 export async function getAllLeaves(req, res) {
   const filter = {};
   if (req.query.status) {
@@ -116,10 +127,19 @@ export async function getAllLeaves(req, res) {
     filter.status = req.query.status;
   }
 
-  const leaves = await LeaveRequest.find(filter)
-    .populate('userId', 'employeeId email name role')
-    .sort({ createdAt: -1 });
-  res.json(leaves);
+  const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+  if (!hasPagination) {
+    const leaves = await LeaveRequest.find(filter)
+      .populate('userId', 'employeeId email name role')
+      .sort({ createdAt: -1 });
+    return res.json(leaves);
+  }
+  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 10 });
+  const [total, leaves] = await Promise.all([
+    LeaveRequest.countDocuments(filter),
+    LeaveRequest.find(filter).populate('userId', 'employeeId email name role').sort({ createdAt: -1 }).skip(skip).limit(limit),
+  ]);
+  res.json(paginatedResponse(leaves, total, page, limit));
 }
 
 // PATCH /api/leaves/:id/review — HR/ADMIN approve/reject with comment,

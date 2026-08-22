@@ -1,11 +1,13 @@
 import { Fragment, useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Donut from '../../components/charts/Donut';
+import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
 import { useDelayedReady } from '../../hooks/useDelayedReady';
@@ -61,25 +63,35 @@ function employeeOf(record: Payroll): User {
 
 export default function PayrollAdmin() {
   const ready = useDelayedReady();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(Number(searchParams.get('page') || 1), 1);
   const { toasts, push } = useToasts();
   const [records, setRecords] = useState<Payroll[] | null>(null);
+  const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null);
   const [employees, setEmployees] = useState<User[]>([]);
   const [loadError, setLoadError] = useState('');
   const [edit, setEdit] = useState<EditState | null>(null);
   const [saving, setSaving] = useState(false);
 
-  async function load() {
+  async function load(p = page) {
     try {
-      const [payrollList, staff] = await Promise.all([getAllPayroll(), listEmployees()]);
-      setRecords(payrollList);
-      setEmployees(staff);
+      const [payrollRes, staff] = await Promise.all([getAllPayroll(p, 10), listEmployees()]);
+      if (Array.isArray(payrollRes)) {
+        setRecords(payrollRes);
+        setPagination(null);
+      } else {
+        setRecords(payrollRes.data);
+        setPagination({ total: payrollRes.total, pages: payrollRes.pages });
+      }
+      if (Array.isArray(staff)) setEmployees(staff);
+      else setEmployees((staff as { data: User[] }).data);
       setLoadError('');
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load');
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(page); }, [page]);
 
   const processedPercent = employees.length
     ? Math.round(((records?.length ?? 0) / employees.length) * 100)
@@ -186,17 +198,18 @@ export default function PayrollAdmin() {
                 </p>
               </Card>
 
-              <Card className="bento__wide table-card" heading={`Salary structures (${records?.length ?? 0})`}>
+              <Card className="bento__wide table-card" heading={`Salary structures (${pagination ? pagination.total : records?.length ?? 0})`}>
                 {records && records.length > 0 ? (
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Employee</th><th>Basic</th><th>Allowances</th>
-                        <th>Deductions</th><th>Net</th><th>Effective</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {records.map((r) => {
+                  <>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Employee</th><th>Basic</th><th>Allowances</th>
+                          <th>Deductions</th><th>Net</th><th>Effective</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {records.map((r) => {
                         const who = employeeOf(r);
                         const name = who.name || who.email || who.id;
                         const initials = name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
@@ -287,6 +300,8 @@ export default function PayrollAdmin() {
                       })}
                     </tbody>
                   </table>
+                    {pagination && <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={(p) => setSearchParams(p === 1 ? {} : { page: String(p) })} />}
+                  </>
                 ) : (
                   <p className="dash-sub">No salary structures yet — the first edit creates one.</p>
                 )}
