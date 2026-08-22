@@ -47,13 +47,33 @@ const payrollSchema = new mongoose.Schema(
         } else {
           ret.userId = ret.userId?.toString() ?? null;
         }
-        // Net pay is computed server-side so clients never do the math — handle Map or plain object
+        const toPlainObject = (v) => {
+          if (!v) return {};
+          if (v instanceof Map) return Object.fromEntries(v);
+          if (typeof v === 'object') return { ...v };
+          return {};
+        };
         const toVals = (v) => {
           if (!v) return [];
           if (v instanceof Map) return Array.from(v.values());
           if (typeof v === 'object') return Object.values(v);
           return [];
         };
+        // Ensure allowances/deductions are plain objects for clients
+        ret.allowances = toPlainObject(ret.allowances);
+        ret.deductions = toPlainObject(ret.deductions);
+        // Ensure revision previous Maps are plain objects so frontend diff works
+        if (Array.isArray(ret.revisions)) {
+          ret.revisions = ret.revisions.map((r) => {
+            if (r && r.previous) {
+              r.previous.allowances = toPlainObject(r.previous.allowances);
+              r.previous.deductions = toPlainObject(r.previous.deductions);
+            }
+            if (r && r.at) r.at = r.at instanceof Date ? r.at.toISOString() : r.at;
+            if (r && r.changedBy) r.changedBy = r.changedBy?.toString?.() ?? r.changedBy;
+            return r;
+          });
+        }
         ret.totalAllowances = toVals(ret.allowances).reduce((s, v) => s + v, 0);
         ret.totalDeductions = toVals(ret.deductions).reduce((s, v) => s + v, 0);
         ret.grossPay = ret.basicSalary + ret.totalAllowances;
