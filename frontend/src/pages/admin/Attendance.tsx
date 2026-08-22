@@ -69,6 +69,7 @@ export default function AttendanceOverview() {
         { to: '/admin/attendance', label: 'Attendance', icon: '🗓' },
         { to: '/admin/approvals', label: 'Approvals', icon: '✓' },
         { to: '/admin/payroll', label: 'Payroll', icon: '💵' },
+        { to: '/admin/reports', label: 'Reports', icon: '📊' },
       ]}
       commands={[
         { label: 'Overview', hint: 'page', to: '/admin' },

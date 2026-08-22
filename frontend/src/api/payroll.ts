@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, download, saveBlob } from './client';
 import type { Payroll } from '../types';
 
 export interface PayrollStructureInput {
@@ -18,4 +18,9 @@ export function getAllPayroll() {
 
 export function updatePayroll(userId: string, input: PayrollStructureInput) {
   return api.patch<Payroll>(`/payroll/${userId}`, input);
+}
+
+export async function downloadPayslip(month: string) {
+  const { blob, filename } = await download(`/payroll/slip?month=${encodeURIComponent(month)}`);
+  saveBlob(blob, filename);
 }

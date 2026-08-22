@@ -151,3 +151,34 @@ export interface Payroll {
   grossPay: number;
   netPay: number;
 }
+
+export interface AttendanceReportRow {
+  employeeId: string;
+  name: string;
+  email: string;
+  role: string;
+  present: number;
+  halfDay: number;
+  leaveDays: number;
+  absent: number;
+  workdays: number;
+  hours: number;
+  rate: number | null;
+}
+
+export interface AttendanceReport {
+  month: string;
+  workdays: number;
+  generatedAt: string;
+  rows: AttendanceReportRow[];
+}
+
+export interface AnalyticsSummary {
+  month: string;
+  headcount: { total: number; active: number; byRole: Record<string, number> };
+  attendanceTrend: Array<{ date: string; present: number; halfDay: number }>;
+  leaveUsage: Array<{ type: string; days: number }>;
+  pendingLeaves: number;
+  payroll: { withSalary: number; gross: number; deductions: number; net: number };
+  generatedAt: string;
+}

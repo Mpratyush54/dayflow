@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
+import Button from '../../components/common/Button';
 import CountdownRing from '../../components/common/CountdownRing';
 import { useDelayedReady } from '../../hooks/useDelayedReady';
-import { getMyPayroll } from '../../api/payroll';
+import { ToastStack } from '../../components/common/Toast';
+import { useToasts } from '../../hooks/useToasts';
+import { downloadPayslip, getMyPayroll } from '../../api/payroll';
 import type { Payroll } from '../../types';
 
 function money(amount: number, currency = 'INR') {
@@ -37,8 +40,26 @@ function formatDate(value?: string) {
 
 export default function Payslip() {
   const ready = useDelayedReady();
+  const { toasts, push } = useToasts();
   const [payroll, setPayroll] = useState<Payroll | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [downloading, setDownloading] = useState(false);
+  const now = new Date();
+  const [month, setMonth] = useState(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+  );
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      await downloadPayslip(month);
+      push(`Payslip for ${month} downloaded`);
+    } catch (err) {
+      push(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +89,7 @@ export default function Payslip() {
     >
       <div className="container page">
         <div className="orb page__orb" aria-hidden />
+        <ToastStack toasts={toasts} />
 
         {!ready ? (
           <div className="bento">
@@ -95,6 +117,18 @@ export default function Payslip() {
               </div>
               <div className="hero-actions">
                 <Badge tone="success">{payroll.currency}</Badge>
+                <input
+                  type="month"
+                  className="input"
+                  style={{ width: 'auto', height: 'var(--button-height)' }}
+                  value={month}
+                  max={`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`}
+                  onChange={(e) => setMonth(e.target.value)}
+                  aria-label="Payslip month"
+                />
+                <Button onClick={() => void handleDownload()} disabled={downloading}>
+                  {downloading ? 'Preparing…' : 'Download PDF'}
+                </Button>
               </div>
             </div>
 
