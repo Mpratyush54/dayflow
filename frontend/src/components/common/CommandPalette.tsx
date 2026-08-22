@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export interface Command {
   label: string;
@@ -12,7 +13,10 @@ export default function CommandPalette({ commands }: { commands: Command[] }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useFocusTrap(panelRef, open, { initialFocus: inputRef });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -27,10 +31,6 @@ export default function CommandPalette({ commands }: { commands: Command[] }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
 
   const results = useMemo(
     () => commands.filter(c => c.label.toLowerCase().includes(query.toLowerCase())),
@@ -48,7 +48,14 @@ export default function CommandPalette({ commands }: { commands: Command[] }) {
 
   return (
     <div className="cmdk__backdrop" onClick={() => setOpen(false)}>
-      <div className="cmdk" onClick={e => e.stopPropagation()} role="dialog" aria-label="Command palette">
+      <div
+        ref={panelRef}
+        className="cmdk"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+      >
         <input
           ref={inputRef}
           className="cmdk__input"

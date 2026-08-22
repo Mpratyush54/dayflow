@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface DialogProps {
   open: boolean;
@@ -11,19 +12,15 @@ export default function Dialog({ open, onClose, title, children }: DialogProps) 
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  useFocusTrap(panelRef, open, { initialFocus: panelRef });
+
   useEffect(() => {
     if (!open) return;
-    const prev = document.activeElement as HTMLElement | null;
-    panelRef.current?.focus();
-
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      prev?.focus();
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!open) return null;

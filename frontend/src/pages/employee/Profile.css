@@ -166,3 +166,115 @@
   gap: var(--space-sm);
   align-items: center;
 }
+
+/* Tab navigation */
+.profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  border-bottom: 1px solid var(--color-hairline-soft);
+  padding-bottom: var(--space-xs);
+}
+
+.profile-tabs__tab {
+  font: var(--type-body-md);
+  color: var(--color-muted);
+  text-decoration: none;
+  padding: var(--space-sm) var(--space-base);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.profile-tabs__tab:hover {
+  color: var(--color-ink);
+}
+
+.profile-tabs__tab--active {
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border-color: var(--color-hairline-soft);
+  font-weight: 500;
+}
+
+.profile-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.profile-section-label {
+  font: var(--type-caption);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: var(--space-base) 0 var(--space-sm);
+}
+
+.profile-field-error {
+  margin-top: calc(-1 * var(--space-sm));
+  margin-bottom: var(--space-sm);
+}
+
+.profile-grid__full {
+  grid-column: 1 / -1;
+}
+
+.document-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.document-list__main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.document-list__actions {
+  display: inline-flex;
+  gap: var(--space-xs);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.document-list__btn {
+  padding: var(--space-xs) var(--space-sm);
+  font: var(--type-caption);
+}
+
+.document-upload {
+  margin-top: var(--space-base);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  border-top: 1px solid var(--color-hairline-soft);
+  padding-top: var(--space-base);
+}
+
+.document-upload__label {
+  font: var(--type-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.document-upload__row {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.document-upload__name {
+  flex: 1 1 160px;
+}
+
+.document-upload__file {
+  flex: 1 1 180px;
+}
