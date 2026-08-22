@@ -223,10 +223,39 @@ export const swaggerSpec = {
     },
     '/api/attendance': {
       get: {
-        summary: 'Own attendance (daily/weekly)',
+        summary: 'Own attendance (daily/weekly view + summary)',
+        description:
+          'Returns one entry per day for the requested window (gaps included as absent) ' +
+          'plus a summary: workdays, present, half-days, absent, total hours, attendance rate.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'days',
+            in: 'query',
+            schema: { type: 'integer', default: 7, minimum: 1, maximum: 31 },
+            description: 'Window length ending today (1 = daily view, 7 = weekly)',
+          },
+        ],
         responses: {
-          200: { description: 'Attendance records' },
+          200: { description: 'Day list + summary' },
+        },
+      },
+    },
+    '/api/attendance/team': {
+      get: {
+        summary: "Everyone's attendance for a date (HR/ADMIN)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'date',
+            in: 'query',
+            schema: { type: 'string', format: 'date' },
+            description: 'YYYY-MM-DD (defaults to today)',
+          },
+        ],
+        responses: {
+          200: { description: 'Per-employee rows: check-in/out, status, worked hours' },
+          403: { description: 'Forbidden (EMPLOYEE role)' },
         },
       },
     },
@@ -235,16 +264,18 @@ export const swaggerSpec = {
         summary: 'Check in for today',
         security: [{ bearerAuth: [] }],
         responses: {
-          201: { description: 'Checked in' },
+          201: { description: "Today's record created with checkIn timestamp" },
+          409: { description: 'Already checked in today' },
         },
       },
     },
     '/api/attendance/checkout': {
       post: {
-        summary: 'Check out for today',
+        summary: 'Check out for today (>= 4 worked hours = PRESENT, else HALF_DAY)',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: { description: 'Checked out' },
+          200: { description: 'Record closed with checkOut timestamp and final status' },
+          409: { description: 'Not checked in, or already checked out' },
         },
       },
     },
