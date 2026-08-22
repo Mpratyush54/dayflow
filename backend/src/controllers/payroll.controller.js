@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Payroll from '../models/payroll.model.js';
 import User from '../models/user.model.js';
 import { HttpError } from '../utils/httpError.js';
+import { notifyPayslipReady } from '../utils/mailer.js';
 
 function assertValidId(id) {
   if (!mongoose.isValidObjectId(id)) {
@@ -98,5 +99,9 @@ export async function updatePayroll(req, res) {
     'userId',
     'employeeId email name role',
   );
+
+  // Fire-and-forget payslip-ready notification; never throws, never blocks
+  void notifyPayslipReady(populated.userId, populated.toJSON(), req.user);
+
   res.json(populated);
 }
