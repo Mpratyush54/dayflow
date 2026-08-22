@@ -427,33 +427,36 @@ export default function Profile() {
           </Card>
 
           <Card heading="Documents">
-            {profile.documents && profile.documents.length > 0 ? (
-              <ul className="document-list">
-                {profile.documents.map((doc) => (
-                  <li key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-                    <span>
-                      <a href={doc.url} target="_blank" rel="noreferrer">
-                        {doc.name}
-                      </a>
-                      <span className="document-list__date" style={{ marginLeft: 8 }}>{formatDate(doc.uploadedAt)}</span>
-                    </span>
-                    <span style={{ display: 'inline-flex', gap: 8 }}>
-                      <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
-                        View
-                      </a>
-                      <a href={doc.url} download={doc.name} className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
-                        Download
-                      </a>
-                      <Button variant="text" onClick={() => void handleDocDelete(doc.id)} style={{ fontSize: 12 }}>
-                        Delete
-                      </Button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="profile-note">No documents on file.</p>
-            )}
+            {(() => {
+              const realDocs = (profile.documents ?? []).filter((d) => !/example\.(org|com)/i.test(d.url));
+              return realDocs.length > 0 ? (
+                <ul className="document-list">
+                  {realDocs.map((doc) => (
+                    <li key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                      <span>
+                        <a href={doc.url} target="_blank" rel="noreferrer">
+                          {doc.name}
+                        </a>
+                        <span className="document-list__date" style={{ marginLeft: 8 }}>{formatDate(doc.uploadedAt)}</span>
+                      </span>
+                      <span style={{ display: 'inline-flex', gap: 8 }}>
+                        <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
+                          View
+                        </a>
+                        <a href={doc.url} download={doc.name} className="btn btn--outline" style={{ padding: '4px 10px', fontSize: 12 }}>
+                          Download
+                        </a>
+                        <Button variant="text" onClick={() => void handleDocDelete(doc.id)} style={{ fontSize: 12 }}>
+                          Delete
+                        </Button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="profile-note">No documents on file. Uploaded ID proofs and offer letters will appear here (PDF/JPG/PNG, ≤5MB).</p>
+              );
+            })()}
             <form onSubmit={handleDocUpload} style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--color-hairline-soft)', paddingTop: 12 }}>
               <span className="field__label" style={{ fontWeight: 600, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--color-muted)' }}>Upload ID proof / PDF</span>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

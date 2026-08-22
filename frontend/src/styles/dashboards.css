@@ -908,4 +908,34 @@
     grid-template-columns: repeat(5, minmax(0,1fr));
     overflow-x: auto;
   }
+  /* fix leave approvals mobile: buttons wrap, table scrolls */
+  .leave-actions {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .leave-actions .btn {
+    flex: 0 1 auto;
+    min-width: 84px;
+    white-space: nowrap;
+  }
+  .row-detail__inner {
+    flex-wrap: wrap;
+  }
+  .table-card {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* attendance week: prevent weekday overlap */
+  .week-cell {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .week-cell__day {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .area-chart__labels {
+    gap: 2px;
+    font-size: 10px;
+  }
 }
