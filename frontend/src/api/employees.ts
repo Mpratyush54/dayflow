@@ -68,11 +68,12 @@ export interface Paginated<T> {
 }
 
 export function listEmployees(): Promise<User[]>;
-export function listEmployees(page: number, limit?: number): Promise<Paginated<User>>;
-export function listEmployees(page?: number, limit?: number): Promise<User[] | Paginated<User>> {
+export function listEmployees(page: number, limit?: number, q?: string): Promise<Paginated<User>>;
+export function listEmployees(page?: number, limit?: number, q?: string): Promise<User[] | Paginated<User>> {
   const qs = new URLSearchParams();
   if (page) qs.set('page', String(page));
   if (limit) qs.set('limit', String(limit));
+  if (q?.trim()) qs.set('q', q.trim());
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
   return api.get<User[] | Paginated<User>>(`/employees${suffix}`);
 }

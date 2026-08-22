@@ -171,6 +171,15 @@ export const swaggerSpec = {
       get: {
         summary: 'List employees (admin/HR only)',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'q',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Filter by name, email, or employee ID (case-insensitive)',
+          },
+        ],
         responses: {
           200: { description: 'Employee list' },
           403: { description: 'Forbidden' },
@@ -402,6 +411,13 @@ export const swaggerSpec = {
             required: false,
             schema: { type: 'string', enum: ['PENDING', 'APPROVED', 'REJECTED'] },
           },
+          {
+            name: 'q',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Filter by applicant name, email, or employee ID',
+          },
         ],
         responses: {
           200: { description: 'Leave requests with applicant info' },
@@ -474,16 +490,37 @@ export const swaggerSpec = {
               schema: {
                 type: 'object',
                 properties: {
+                  monthlyWage: {
+                    type: 'number',
+                    minimum: 0,
+                    description: 'Monthly wage — components are calculated from this total',
+                  },
+                  components: {
+                    type: 'array',
+                    description: 'Salary component rules (% of wage, % of basic, or fixed)',
+                    items: {
+                      type: 'object',
+                      required: ['key', 'mode', 'value'],
+                      properties: {
+                        key: { type: 'string' },
+                        mode: {
+                          type: 'string',
+                          enum: ['fixed', 'percent_of_wage', 'percent_of_basic'],
+                        },
+                        value: { type: 'number', minimum: 0 },
+                      },
+                    },
+                  },
                   basicSalary: { type: 'number', minimum: 0 },
                   currency: { type: 'string' },
                   allowances: {
                     type: 'object',
-                    description: 'name → non-negative amount',
+                    description: 'name → non-negative amount (legacy flat amounts)',
                     additionalProperties: { type: 'number' },
                   },
                   deductions: {
                     type: 'object',
-                    description: 'name → non-negative amount',
+                    description: 'name → non-negative amount (PF and Prof Tax are auto-merged)',
                     additionalProperties: { type: 'number' },
                   },
                   effectiveFrom: { type: 'string', format: 'date' },

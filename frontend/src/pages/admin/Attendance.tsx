@@ -4,10 +4,12 @@ import Sidebar from '../../components/layout/Sidebar';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
 import Sparkline from '../../components/charts/Sparkline';
 import Pagination from '../../components/common/Pagination';
 import { ToastStack } from '../../components/common/Toast';
 import { useToasts } from '../../hooks/useToasts';
+import { useDebouncedSearchParam, setPageParam } from '../../hooks/useDebouncedSearchParam';
 import { getAttendanceStreamUrl, getTeamAttendance } from '../../api/attendance';
 import type { TeamAttendance } from '../../types';
 import { extraHours, fmtHours, liveHoursFromCheckIn, totalLoggedHours, workHours } from '../../utils/overtime';
@@ -77,8 +79,8 @@ export default function AttendanceOverview() {
   const [now, setNow] = useState(() => new Date());
   const [liveStillIn, setLiveStillIn] = useState<number | null>(null);
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
+  const { input: searchInput, setInput: setSearchInput, debounced: searchQ } = useDebouncedSearchParam('q');
   const PAGE_SIZE = 10;
-  const q = searchParams.get('q') ?? '';
 
   const load = useCallback(async (forDate: string) => {
     setLoading(true);
@@ -156,15 +158,15 @@ export default function AttendanceOverview() {
 
   const rows = data?.rows ?? [];
   const filteredRows = useMemo(() => {
-    if (!q.trim()) return rows;
-    const needle = q.trim().toLowerCase();
+    const needle = searchQ.trim().toLowerCase();
+    if (!needle) return rows;
     return rows.filter((r) => {
       const name = (r.user.name ?? '').toLowerCase();
       const email = (r.user.email ?? '').toLowerCase();
       const empId = (r.user.employeeId ?? '').toLowerCase();
       return name.includes(needle) || email.includes(needle) || empId.includes(needle);
     });
-  }, [rows, q]);
+  }, [rows, searchQ]);
 
   const present = filteredRows.filter((r) => r.status === 'PRESENT').length;
   const onLeave = filteredRows.filter((r) => r.status === 'LEAVE').length;
@@ -302,25 +304,17 @@ export default function AttendanceOverview() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 'var(--space-md)', display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
-              <input
+            <div style={{ marginBottom: 'var(--space-md)', display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Input
+                label="Search employees"
                 type="search"
-                aria-label="Search employees"
                 placeholder="Search employees..."
-                value={q}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const sp = new URLSearchParams(searchParams);
-                  if (v) sp.set('q', v);
-                  else sp.delete('q');
-                  sp.delete('page');
-                  setSearchParams(sp);
-                }}
-                className="input"
-                style={{ maxWidth: 360, height: 'var(--input-height)', background: 'var(--color-surface-card)', border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-md)' }}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="list-search-input"
               />
-              {q && (
-                <Button variant="outline" onClick={() => updateSearchParams({ q: undefined, page: undefined })}>Clear</Button>
+              {searchQ && (
+                <Button variant="outline" onClick={() => setSearchInput('')}>Clear</Button>
               )}
               <span className="dash-sub" style={{ color: 'var(--color-muted)' }}>{filteredRows.length} employees</span>
             </div>
@@ -347,9 +341,9 @@ export default function AttendanceOverview() {
                 <span className="stat-label">Selected date · {data.date}</span>
               </Card>
 
-              <Card className="bento__wide" heading={`Attendance · ${data.date} (${filteredRows.length}${q ? ` filtered` : ''})`}>
+              <Card className="bento__wide" heading={`Attendance · ${data.date} (${filteredRows.length}${searchQ ? ' filtered' : ''})`}>
                 {filteredRows.length === 0 ? (
-                  <p className="dash-sub">{q ? `No employees matching "${q}".` : 'No employees yet.'}</p>
+                  <p className="dash-sub">{searchQ ? `No employees matching "${searchQ}".` : 'No employees yet.'}</p>
                 ) : (
                   <>
                     <div className="table-card">
@@ -399,12 +393,7 @@ export default function AttendanceOverview() {
                         page={safePage}
                         pages={totalPages}
                         total={filteredRows.length}
-                        onPageChange={(p) => {
-                          const next = new URLSearchParams(searchParams);
-                          if (p === 1) next.delete('page');
-                          else next.set('page', String(p));
-                          setSearchParams(next);
-                        }}
+                        onPageChange={(p) => setPageParam(searchParams, setSearchParams, p)}
                       />
                     )}
                   </>

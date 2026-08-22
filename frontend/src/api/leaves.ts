@@ -67,12 +67,13 @@ export async function applyLeave(input: ApplyLeaveInput): Promise<LeaveRequest> 
 }
 
 export function getAllLeaves(status?: LeaveStatus): Promise<LeaveRequest[]>;
-export function getAllLeaves(status: LeaveStatus | undefined, page: number, limit?: number): Promise<Paginated<LeaveRequest>>;
-export function getAllLeaves(status?: LeaveStatus, page?: number, limit?: number): Promise<LeaveRequest[] | Paginated<LeaveRequest>> {
+export function getAllLeaves(status: LeaveStatus | undefined, page: number, limit?: number, q?: string): Promise<Paginated<LeaveRequest>>;
+export function getAllLeaves(status?: LeaveStatus, page?: number, limit?: number, q?: string): Promise<LeaveRequest[] | Paginated<LeaveRequest>> {
   const qs = new URLSearchParams();
   if (status) qs.set('status', status);
   if (page) qs.set('page', String(page));
   if (limit) qs.set('limit', String(limit));
+  if (q?.trim()) qs.set('q', q.trim());
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
   return api.get<LeaveRequest[] | Paginated<LeaveRequest>>(`/leaves/all${suffix}`);
 }
