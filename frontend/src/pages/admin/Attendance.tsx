@@ -167,8 +167,6 @@ export default function AttendanceOverview() {
   }, [rows, q]);
 
   const present = filteredRows.filter((r) => r.status === 'PRESENT').length;
-  const halfDay = filteredRows.filter((r) => r.status === 'HALF_DAY').length;
-  const absent = filteredRows.filter((r) => r.status === 'ABSENT').length;
   const onLeave = filteredRows.filter((r) => r.status === 'LEAVE').length;
   const stillInBase = filteredRows.filter((r) => r.checkIn && !r.checkOut).length;
   const stillIn = liveStillIn ?? stillInBase;

@@ -111,7 +111,7 @@ export default function Attendance() {
         const n = await flushQueue(checkIn, checkOut);
         if (n > 0) {
           push(`Synced ${n} queued check-${q[0]?.type === 'checkin' ? 'in' : 'out'}${n > 1 ? 's' : ''}`);
-          await load(selectedDate);
+          await load(selectedMonth);
         }
       } catch {
         // keep remaining queue for next online event
@@ -121,7 +121,7 @@ export default function Attendance() {
     // Also attempt flush on mount if already online and queue exists
     if (navigator.onLine && getQueue().length > 0) void onOnline();
     return () => window.removeEventListener('online', onOnline);
-  }, [load, selectedDate, push]);
+  }, [load, selectedMonth, push]);
 
   async function handleAction() {
     const actionType = checkedIn ? 'checkout' : 'checkin';
